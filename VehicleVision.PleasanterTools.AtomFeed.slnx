@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VehicleVision.PleasanterTools.AtomFeed.Core/VehicleVision.PleasanterTools.AtomFeed.Core.csproj" />
+    <Project Path="src/VehicleVision.PleasanterTools.AtomFeed.Mail/VehicleVision.PleasanterTools.AtomFeed.Mail.csproj" />
+    <Project Path="src/VehicleVision.PleasanterTools.AtomFeed.Data/VehicleVision.PleasanterTools.AtomFeed.Data.csproj" />
+    <Project Path="src/VehicleVision.PleasanterTools.AtomFeed.Pleasanter/VehicleVision.PleasanterTools.AtomFeed.Pleasanter.csproj" />
+    <Project Path="src/VehicleVision.PleasanterTools.AtomFeed.Web/VehicleVision.PleasanterTools.AtomFeed.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VehicleVision.PleasanterTools.AtomFeed.Core.Tests/VehicleVision.PleasanterTools.AtomFeed.Core.Tests.csproj" />
+    <Project Path="tests/VehicleVision.PleasanterTools.AtomFeed.Mail.Tests/VehicleVision.PleasanterTools.AtomFeed.Mail.Tests.csproj" />
+    <Project Path="tests/VehicleVision.PleasanterTools.AtomFeed.Web.Tests/VehicleVision.PleasanterTools.AtomFeed.Web.Tests.csproj" />
+  </Folder>
+</Solution>
