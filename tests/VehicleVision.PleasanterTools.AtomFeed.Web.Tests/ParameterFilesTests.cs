@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using VehicleVision.PleasanterTools.AtomFeed.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
 
 namespace VehicleVision.PleasanterTools.AtomFeed.Web.Tests;
@@ -38,9 +39,9 @@ public sealed class ParameterFilesTests : IDisposable
     }
 
     [Fact]
-    public void 失敗の通知の設定も_ファイルのキーを写す()
+    public void 失敗の通知の設定は_Feed_jsonの入れ子から写す()
     {
-        Write("Feed.json", """{ "FailureNotify": true, "FailureNotifyThreshold": 5, "FailureNotifyRepeatHours": 12 }""");
+        Write("Feed.json", """{ "FailureNotify": { "Enabled": true, "Threshold": 5, "RepeatHours": 12 } }""");
 
         var config = Build();
 
@@ -50,15 +51,71 @@ public sealed class ParameterFilesTests : IDisposable
     }
 
     [Fact]
-    public void SAMLとPleasanterのログインの設定は_環境変数と同じ正式名のキーをファイルへそのまま書ける()
+    public void メールの設定は_Pleasanterに倣って経路ごとに入れ子にして書ける()
     {
-        // 別名の写しが無い設定（SAML・Pleasanter のログイン）は、正式名を書けばよい（README に書いてある）
-        Write("Service.json", """{ "ATOMFEED_SAML_ENABLED": "true", "ATOMFEED_PLEASANTERSSO_LOGINURL": "/users/login" }""");
+        Write("Mail.json", """
+            {
+              "Enabled": true, "Provider": "Smtp", "FromAddress": "noreply@example.com", "Worker": false,
+              "Smtp": { "Host": "smtp.example.com", "Port": 2525, "Security": "StartTls", "User": "u", "Password": "p" },
+              "AwsSes": { "Region": "ap-northeast-1" },
+              "Acs": { "Endpoint": "https://x.communication.azure.com" }
+            }
+            """);
 
         var config = Build();
 
-        Assert.Equal("true", config["ATOMFEED_SAML_ENABLED"]);
-        Assert.Equal("/users/login", config["ATOMFEED_PLEASANTERSSO_LOGINURL"]);
+        Assert.Equal("True", config["ATOMFEED_MAIL_ENABLED"]);
+        Assert.Equal("Smtp", config["ATOMFEED_MAIL_TRANSPORT"]);
+        Assert.Equal("noreply@example.com", config["ATOMFEED_MAIL_FROM_ADDRESS"]);
+        Assert.Equal("smtp.example.com", config["ATOMFEED_MAIL_SMTP_HOST"]);
+        Assert.Equal("2525", config["ATOMFEED_MAIL_SMTP_PORT"]);
+        Assert.Equal("StartTls", config["ATOMFEED_MAIL_SMTP_SECURITY"]);
+        Assert.Equal("u", config["ATOMFEED_MAIL_SMTP_USER"]);
+        Assert.Equal("p", config["ATOMFEED_MAIL_SMTP_PASSWORD"]);
+        Assert.Equal("ap-northeast-1", config["ATOMFEED_MAIL_SES_REGION"]);
+        Assert.Equal("https://x.communication.azure.com", config["ATOMFEED_MAIL_ACS_ENDPOINT"]);
+        Assert.Equal("False", config[MailSenderOptions.WorkerKey]);
+    }
+
+    [Fact]
+    public void SAMLとPleasanterのログインの設定は_Authentication_jsonの入れ子から写す()
+    {
+        Write("Authentication.json", """
+            {
+              "Saml": { "Enabled": true, "EntityId": "urn:atomfeed", "IdpCertificate": "-----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----" },
+              "PleasanterSso": { "Enabled": true, "LoginUrl": "/users/login", "RevalidateMinutes": 10 }
+            }
+            """);
+
+        var config = Build();
+
+        Assert.Equal("True", config[AppSettingDefinitions.SamlEnabled]);
+        Assert.Equal("urn:atomfeed", config[AppSettingDefinitions.SamlEntityId]);
+        Assert.Contains("BEGIN CERTIFICATE", config[AppSettingDefinitions.SamlIdpCertificate]);
+        Assert.Equal("True", config[AppSettingDefinitions.PleasanterSsoEnabled]);
+        Assert.Equal("/users/login", config[AppSettingDefinitions.PleasanterSsoLoginUrl]);
+        Assert.Equal("10", config[AppSettingDefinitions.PleasanterSsoRevalidateMinutes]);
+    }
+
+    [Fact]
+    public void 同じ名前のキーが別のファイルにあっても混ざらない()
+    {
+        // Rds.json の Provider（RDBMS）と Mail.json の Provider（送信経路）。Pleasanter と同じく、ファイルごとに持てる
+        Write("Rds.json", """{ "Provider": "PostgreSql" }""");
+        Write("Mail.json", """{ "Provider": "AmazonSes" }""");
+
+        var config = Build();
+
+        Assert.Equal("PostgreSql", config[AppSettings.DbProvider]);
+        Assert.Equal("AmazonSes", config["ATOMFEED_MAIL_TRANSPORT"]);
+    }
+
+    [Fact]
+    public void 環境変数と同じ正式名のキーをファイルへそのまま書いても効く()
+    {
+        Write("Service.json", """{ "ATOMFEED_SAML_ENABLED": "true" }""");
+
+        Assert.Equal("true", Build()["ATOMFEED_SAML_ENABLED"]);
     }
 
     [Fact]

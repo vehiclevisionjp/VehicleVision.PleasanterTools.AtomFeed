@@ -3,6 +3,24 @@
 **Pleasanter 本体・Questionnaire と同じ方式**で、設定は `App_Data/Parameters/*.json` に置く。
 読み込みは 1 か所（`Web/Services/ParameterFiles.cs`）で、アプリの一番先で積む。
 
+## ファイルの分け方（Pleasanter に倣う）
+
+**関心ごとにファイルを分け、関連する設定は入れ子（オブジェクト）にまとめる。** Pleasanter の `Rds.json` / `Security.json` / `Mail.json` /
+`Authentication.json` / `Service.json` と同じ名前・同じ考え方で、本アプリ固有のもの（`Feed.json`・`Pleasanter.json`）だけを足している。
+
+| ファイル | 内容 | 階層 |
+| --- | --- | --- |
+| `Service.json` | 本アプリ全体（公開 URL・既定のタイムゾーン） | 平ら |
+| `Rds.json` | 本アプリ専用の DB | 平ら |
+| `Security.json` | 2 要素・パスワードの条件・秘密の鍵・監査ログ・信頼するプロキシ | 平ら（`PasswordPolicies` は配列） |
+| `Authentication.json` | 管理画面へのログインの外部連携 | `Saml{}` / `PleasanterSso{}` |
+| `Mail.json` | 招待メールの送信 | 経路ごと: `Smtp{}` / `AwsSes{}` / `Acs{}`（Pleasanter の `Mail.json` の `AwsSes{}` などに倣う） |
+| `Feed.json` | フィードの取得・配信 | `FailureNotify{}`（取得失敗の通知） |
+| `Pleasanter.json` | 接続先の Pleasanter | 平ら |
+
+- **ファイルごとに別々に読む**ので、`Rds.json` の `Provider`（RDBMS）と `Mail.json` の `Provider`（送信経路）のように、同じ名前のキーを別のファイルに持てる。
+- 入れ子のキーは、下の表では `Smtp:Host` のように `:` でつないで書く（JSON では `"Smtp": { "Host": … }`）。
+
 ## 規約
 
 - **キーの説明は、同じ階層に `"//キー名"` の項目を置いて書く。**
@@ -36,12 +54,13 @@
 | Pleasanter のログイン | `ATOMFEED_PLEASANTERSSO_ENABLED`・`_INTERNALBASEURL`・`_LOGINURL`・`_LOGOUTURL`・`_COOKIENAMES`・`_ALLOWEDDEPTIDS`・`_ALLOWEDGROUPIDS`・`_UNKNOWNUSER`・`_REGISTERROLE`・`_REVALIDATEMINUTES`・`_TIMEOUTSECONDS`・`_BUTTONLABEL` |
 | メール | `ATOMFEED_MAIL_ENABLED`・`_TRANSPORT`・`_SMTP_HOST`・`_SMTP_PORT`・`_SMTP_SECURITY`・`_SMTP_USER`・`_SMTP_PASSWORD`（秘密）・`_FROM_ADDRESS`・`_FROM_NAME`・`_REPLYTO_ADDRESS`・`_SES_REGION`・`_ACS_ENDPOINT`・`_TIMEOUT_SECONDS`・`_SEND_PER_MINUTE` |
 
-**SAML・Pleasanter のログインの設定をファイルで固定するとき**は、キーに**環境変数と同じ正式名**（`ATOMFEED_SAML_ENABLED` など）をそのまま書く
-（短い別名の写しは、上のファイルごとの表にあるものだけ）。例: `Service.json` に `"ATOMFEED_SAML_ENABLED": "true"`。環境変数で与えるのが普通で、複数行の証明書（`_IDPCERTIFICATE`）はファイルの方が書きやすい。
-実値を含むときは、読む対象のファイル（`Service` / `Pleasanter` / `Feed` / `Rds` / `Security` / `Mail`）の `.local.json` に書く（`Saml.json` のような新しい名前のファイルは読まれない）。
+**SAML・Pleasanter のログインの設定をファイルで固定するとき**は、`Authentication.json` の `Saml{}` / `PleasanterSso{}` に書く
+（環境変数の正式名 `ATOMFEED_SAML_ENABLED` などを、どのファイルへそのまま書いても効く）。環境変数で与えるのが普通で、複数行の証明書（`Saml:IdpCertificate`）はファイルの方が書きやすい。
+実値を含むときは、読む対象のファイル（`Service` / `Pleasanter` / `Feed` / `Rds` / `Security` / `Authentication` / `Mail`）の `.local.json` に書く
+（上の一覧に無い名前のファイルは読まれない）。
 
 **画面から編集しない設定（起動に要る、またはインスタンスごとの設定）**は、これまでどおりファイル／環境変数だけ:
-`ATOMFEED_DB_*`（接続先・自動マイグレーション）、`ATOMFEED_SECRET_KEY`、`ATOMFEED_FORWARDED_PROXY_NETWORKS`、`PasswordPolicies`（正規表現の条件）、`ATOMFEED_MAIL_WORKER`（この台で送信ワーカーを動かすか）、`ATOMFEED_PARAMETERS_DIRECTORY`。
+`ATOMFEED_DB_*`（接続先・自動マイグレーション）、`ATOMFEED_SECRET_KEY`、`ATOMFEED_FORWARDED_PROXY_NETWORKS`、`PasswordPolicies`（正規表現の条件）、`ATOMFEED_MAIL_WORKER`（`Mail.json` の `Worker`。この台で送信ワーカーを動かすか）、`ATOMFEED_PARAMETERS_DIRECTORY`。
 
 ## ファイルと環境変数
 
@@ -59,18 +78,27 @@
 | `Pleasanter.json` | `ApiKeyUserTimeZoneId` | `ATOMFEED_PLEASANTER_TIMEZONE` | API キーの利用者のタイムゾーン。未設定なら `TimeZoneDefault`。**運用開始後に変えない** |
 | `Pleasanter.json` | `LinkBaseUrl` | `ATOMFEED_PLEASANTER_LINKBASEURL` | 記事に付けるレコードへのリンクの基点 |
 | `Feed.json` | `CacheSeconds` | `ATOMFEED_FEED_CACHESECONDS` | 取得した記事を使い回す秒数（既定 300） |
-| `Feed.json` | `MaxEntries` | `ATOMFEED_FEED_MAXENTRIES` | 1 フィードの記事の上限（既定 5000） |
+| `Feed.json` | `MaxEntries` | `ATOMFEED_FEED_MAXENTRIES` | 1 フィードの記事の上限（既定 1000） |
 | `Feed.json` | `PageSize` | `ATOMFEED_FEED_PAGESIZE` | Pleasanter へ求める 1 ページの件数（既定 1000） |
-| `Feed.json` | `FailureNotify` | `ATOMFEED_FEED_FAILURENOTIFY` | 取得の失敗が続いたらメールで知らせる（既定 `false`） |
-| `Feed.json` | `FailureNotifyThreshold` | `ATOMFEED_FEED_FAILURENOTIFYTHRESHOLD` | 知らせる連続の失敗の回数（既定 3） |
-| `Feed.json` | `FailureNotifyRepeatHours` | `ATOMFEED_FEED_FAILURENOTIFYREPEATHOURS` | 失敗が続くときの再通知の間隔（時間。既定 24） |
+| `Feed.json` | `FailureNotify:Enabled` | `ATOMFEED_FEED_FAILURENOTIFY` | 取得の失敗が続いたらメールで知らせる（既定 `false`） |
+| `Feed.json` | `FailureNotify:Threshold` | `ATOMFEED_FEED_FAILURENOTIFYTHRESHOLD` | 知らせる連続の失敗の回数（既定 3） |
+| `Feed.json` | `FailureNotify:RepeatHours` | `ATOMFEED_FEED_FAILURENOTIFYREPEATHOURS` | 失敗が続くときの再通知の間隔（時間。既定 24） |
 | `Rds.json` | `Provider` | `ATOMFEED_DB_PROVIDER` | `Sqlite`（既定。簡易セットアップとデバッグ用）/ `SqlServer` / `PostgreSql` / `MySql` |
 | `Rds.json` | `ConnectionString` | `ATOMFEED_DB_CONNECTIONSTRING` | 本アプリの DB（Pleasanter の DB とは別）。**実値は書かない** |
 | `Security.json` | `SecretKey` | `ATOMFEED_SECRET_KEY` | フィードごとの API キーと管理者の TOTP の共有鍵を DB へ暗号化して置く鍵（Base64・32 バイト）。**実値は書かない。** `dotnet run -- --generate-secret-key` で作る。**失うと保管した API キーは復号できない** |
 | `Security.json` | `AdminTwoFactor` | `ATOMFEED_ADMIN_TWOFACTOR` | 管理者の 2 要素。`required`（登録するまでログインが完了しない）/ `optional`（既定）/ `disabled`（登録の口を閉じる。登録済みの人からは外さない）。**知らない値は起動時に落とす** |
 | `Security.json` | `AuditLogRetentionDays` | `ATOMFEED_AUDITLOG_RETENTION_DAYS` | 監査ログを残す日数（既定 365。`0` なら消さない。読めない値は既定へ） |
 | `Security.json` | `ForwardedProxyNetworks` | `ATOMFEED_FORWARDED_PROXY_NETWORKS` | 転送ヘッダ（`X-Forwarded-*`）を信頼するプロキシのネットワーク（カンマ区切りの CIDR）。**未設定なら誰も信頼しない**（プロキシ配下ではレート制限が全員で共有になる）。CIDR でない値は起動時に落とす |
-| `Mail.json` | `Enabled` ほか | `ATOMFEED_MAIL_ENABLED` ほか | **招待メールの送信設定**（Questionnaire の `QUESTIONNAIRE_MAIL_*` と同じ項目。`Mail.json` に一覧と説明）。**既定は無効**（招待は画面の URL を手で渡す）。`SmtpPassword` の実値は書かない（環境変数か `Mail.local.json`）。有効なのに足りない・読めない値は起動時に落とす |
+| `Mail.json` | `Enabled` | `ATOMFEED_MAIL_ENABLED` | 招待メールの送信を有効にするか（既定 `false`） |
+| `Mail.json` | `Provider` | `ATOMFEED_MAIL_TRANSPORT` | 送信経路。`Smtp`（既定）/ `AmazonSes` / `AzureCommunicationServices` |
+| `Mail.json` | `FromAddress` / `FromName` / `ReplyToAddress` | `ATOMFEED_MAIL_FROM_ADDRESS` / `_FROM_NAME` / `_REPLYTO_ADDRESS` | 差出人・返信先 |
+| `Mail.json` | `SendTimeoutSeconds` / `SendPerMinute` | `ATOMFEED_MAIL_TIMEOUT_SECONDS` / `_SEND_PER_MINUTE` | 1 通あたりのタイムアウト・1 分あたりの送信数の上限 |
+| `Mail.json` | `Worker` | `ATOMFEED_MAIL_WORKER` | この台で送信ワーカーを動かすか（既定 `true`） |
+| `Mail.json` | `Smtp:Host` / `Smtp:Port` / `Smtp:Security` / `Smtp:User` / `Smtp:Password` | `ATOMFEED_MAIL_SMTP_HOST` / `_PORT` / `_SECURITY` / `_USER` / `_PASSWORD` | SMTP の接続先・ポート（既定 587）・暗号化（`StartTls` / `ImplicitTls` / `None`）・認証。**パスワードの実値は書かない** |
+| `Mail.json` | `AwsSes:Region` | `ATOMFEED_MAIL_SES_REGION` | Amazon SES のリージョン（資格情報は IAM ロール） |
+| `Mail.json` | `Acs:Endpoint` | `ATOMFEED_MAIL_ACS_ENDPOINT` | Azure Communication Services のエンドポイント（資格情報はマネージド ID） |
+| `Authentication.json` | `Saml:Enabled` ほか（`Saml:*`） | `ATOMFEED_SAML_*` | SAML 2.0 のログイン。`EntityId` / `IdpEntityId` / `SingleSignOnUrl` / `SingleLogoutUrl` / `IdpCertificate` / `UnknownUser` / `RegisterRole` / `LoginIdSource` / `LoginIdClaim` / `ButtonLabel` |
+| `Authentication.json` | `PleasanterSso:Enabled` ほか（`PleasanterSso:*`） | `ATOMFEED_PLEASANTERSSO_*` | Pleasanter のログイン。`InternalBaseUrl` / `LoginUrl` / `LogoutUrl` / `CookieNames` / `AllowedDeptIds` / `AllowedGroupIds` / `UnknownUser` / `RegisterRole` / `RevalidateMinutes` / `TimeoutSeconds` / `ButtonLabel` |
 | `Security.json` | `PasswordMinimumLength` | `ATOMFEED_PASSWORD_MINIMUMLENGTH` | 管理者のパスワードの最低の長さ（既定 12） |
 | `Security.json` | `PasswordPolicies` | `PasswordPolicies__0__Regex` など | パスワードの条件の正規表現（Pleasanter 本体と同じ書き方。部分一致・上から順・最初に合わなかった文言を返す）。**先読み・後方参照・原子グループは使えず、起動時に落とす**。後退戻りしない照合器＋100 ミリ秒の上限で動かす（ReDoS 対策） |
 | `Security.json` | `PasswordAllowSameAsLoginId` | `ATOMFEED_PASSWORD_ALLOWSAMEASLOGINID` | ログイン ID と同じパスワードを許すか（既定 false） |

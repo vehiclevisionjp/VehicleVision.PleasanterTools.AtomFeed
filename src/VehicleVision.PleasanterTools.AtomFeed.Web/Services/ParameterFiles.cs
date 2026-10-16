@@ -41,65 +41,101 @@ public static class ParameterFiles
     /// </remarks>
     public const string FoundFilesKey = "ATOMFEED_PARAMETERS_FOUND";
 
-    /// <summary>読む対象。</summary>
+    /// <summary>読む対象（Pleasanter の <c>App_Data/Parameters</c> に倣った、関心ごとのファイル）。</summary>
     private static readonly ImmutableArray<string> Names =
-        ["Service", "Pleasanter", "Feed", "Rds", "Security", "Mail"];
+        ["Service", "Pleasanter", "Feed", "Rds", "Security", "Authentication", "Mail"];
 
-    /// <summary>ファイルのキー → 正式な設定名（環境変数と同じ名前）。</summary>
-    /// <remarks>**ここに無いキーはそのままの名前で積まれる**（読まれない）。</remarks>
-    private static readonly ImmutableDictionary<string, string> Aliases =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    /// <summary>ファイル名 → （ファイル内のキーの階層 → 正式な設定名＝環境変数と同じ名前）。</summary>
+    /// <remarks>
+    /// <para>
+    /// **ファイルごとに写す。** Pleasanter と同じく、ファイルごとに同じ名前のキー（<c>Provider</c> や <c>Enabled</c>）を
+    /// 持てるようにするため（全部を 1 つに混ぜると衝突する）。入れ子は <c>:</c> で辿る（<c>Smtp:Host</c>）。
+    /// </para>
+    /// <para>**ここに無いキーはそのままの名前で積まれる**（読まれない）。</para>
+    /// </remarks>
+    private static readonly ImmutableDictionary<string, ImmutableDictionary<string, string>> Aliases =
+        new Dictionary<string, ImmutableDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
         {
-            // Service.json
-            ["TimeZoneDefault"] = AppSettings.TimeZoneDefault,
-            ["PublicBaseUrl"] = AppSettings.PublicBaseUrl,
+            ["Service"] = Map(
+                ("TimeZoneDefault", AppSettings.TimeZoneDefault),
+                ("PublicBaseUrl", AppSettings.PublicBaseUrl)),
 
-            // Pleasanter.json
-            ["BaseUrl"] = AppSettings.PleasanterBaseUrl,
-            ["ApiKey"] = AppSettings.PleasanterApiKey,
-            ["ApiVersion"] = AppSettings.PleasanterApiVersion,
-            ["TimeoutSeconds"] = AppSettings.PleasanterTimeoutSeconds,
-            ["ApiKeyUserTimeZoneId"] = AppSettings.PleasanterTimeZone,
-            ["LinkBaseUrl"] = AppSettings.PleasanterLinkBaseUrl,
+            ["Pleasanter"] = Map(
+                ("BaseUrl", AppSettings.PleasanterBaseUrl),
+                ("ApiKey", AppSettings.PleasanterApiKey),
+                ("ApiVersion", AppSettings.PleasanterApiVersion),
+                ("TimeoutSeconds", AppSettings.PleasanterTimeoutSeconds),
+                ("ApiKeyUserTimeZoneId", AppSettings.PleasanterTimeZone),
+                ("LinkBaseUrl", AppSettings.PleasanterLinkBaseUrl)),
 
-            // Feed.json
-            ["CacheSeconds"] = AppSettings.FeedCacheSeconds,
-            ["MaxEntries"] = AppSettings.FeedMaxEntries,
-            ["PageSize"] = AppSettings.FeedPageSize,
-            ["FailureNotify"] = AppSettingDefinitions.FeedFailureNotify,
-            ["FailureNotifyThreshold"] = AppSettingDefinitions.FeedFailureNotifyThreshold,
-            ["FailureNotifyRepeatHours"] = AppSettingDefinitions.FeedFailureNotifyRepeatHours,
+            ["Feed"] = Map(
+                ("CacheSeconds", AppSettings.FeedCacheSeconds),
+                ("MaxEntries", AppSettings.FeedMaxEntries),
+                ("PageSize", AppSettings.FeedPageSize),
+                ("FailureNotify:Enabled", AppSettingDefinitions.FeedFailureNotify),
+                ("FailureNotify:Threshold", AppSettingDefinitions.FeedFailureNotifyThreshold),
+                ("FailureNotify:RepeatHours", AppSettingDefinitions.FeedFailureNotifyRepeatHours)),
 
-            // Rds.json
-            ["Provider"] = AppSettings.DbProvider,
-            ["ConnectionString"] = AppSettings.DbConnectionString,
-            ["AutoMigrate"] = AppSettings.DbAutoMigrate,
+            ["Rds"] = Map(
+                ("Provider", AppSettings.DbProvider),
+                ("ConnectionString", AppSettings.DbConnectionString),
+                ("AutoMigrate", AppSettings.DbAutoMigrate)),
 
-            // Security.json
-            ["AdminTwoFactor"] = AppSettings.AdminTwoFactor,
-            ["PasswordMinimumLength"] = AppSettings.PasswordMinimumLength,
-            ["PasswordAllowSameAsLoginId"] = AppSettings.PasswordAllowSameAsLoginId,
-            ["SecretKey"] = AppSettings.SecretKey,
+            ["Security"] = Map(
+                ("AdminTwoFactor", AppSettings.AdminTwoFactor),
+                ("PasswordMinimumLength", AppSettings.PasswordMinimumLength),
+                ("PasswordAllowSameAsLoginId", AppSettings.PasswordAllowSameAsLoginId),
+                ("SecretKey", AppSettings.SecretKey),
+                ("AuditLogRetentionDays", AppSettings.AuditLogRetentionDays),
+                ("ForwardedProxyNetworks", AppSettings.ForwardedProxyNetworks)),
 
-            // Mail.json（Questionnaire の QUESTIONNAIRE_MAIL_* と同じ項目）
-            ["Enabled"] = "ATOMFEED_MAIL_ENABLED",
-            ["Transport"] = "ATOMFEED_MAIL_TRANSPORT",
-            ["SmtpHost"] = "ATOMFEED_MAIL_SMTP_HOST",
-            ["SmtpPort"] = "ATOMFEED_MAIL_SMTP_PORT",
-            ["SmtpSecurity"] = "ATOMFEED_MAIL_SMTP_SECURITY",
-            ["SmtpUser"] = "ATOMFEED_MAIL_SMTP_USER",
-            ["SmtpPassword"] = "ATOMFEED_MAIL_SMTP_PASSWORD",
-            ["FromAddress"] = "ATOMFEED_MAIL_FROM_ADDRESS",
-            ["FromName"] = "ATOMFEED_MAIL_FROM_NAME",
-            ["ReplyToAddress"] = "ATOMFEED_MAIL_REPLYTO_ADDRESS",
-            ["SesRegion"] = "ATOMFEED_MAIL_SES_REGION",
-            ["AcsEndpoint"] = "ATOMFEED_MAIL_ACS_ENDPOINT",
-            ["SendTimeoutSeconds"] = "ATOMFEED_MAIL_TIMEOUT_SECONDS",
-            ["SendPerMinute"] = MailSenderOptions.MaxSendsPerMinuteKey,
-            ["Worker"] = MailSenderOptions.WorkerKey,
-            ["AuditLogRetentionDays"] = AppSettings.AuditLogRetentionDays,
-            ["ForwardedProxyNetworks"] = AppSettings.ForwardedProxyNetworks,
+            // Pleasanter の Authentication.json に倣う。SAML と Pleasanter のログインをここへ置く
+            ["Authentication"] = Map(
+                ("Saml:Enabled", AppSettingDefinitions.SamlEnabled),
+                ("Saml:EntityId", AppSettingDefinitions.SamlEntityId),
+                ("Saml:IdpEntityId", AppSettingDefinitions.SamlIdpEntityId),
+                ("Saml:SingleSignOnUrl", AppSettingDefinitions.SamlSingleSignOnUrl),
+                ("Saml:SingleLogoutUrl", AppSettingDefinitions.SamlSingleLogoutUrl),
+                ("Saml:IdpCertificate", AppSettingDefinitions.SamlIdpCertificate),
+                ("Saml:UnknownUser", AppSettingDefinitions.SamlUnknownUser),
+                ("Saml:RegisterRole", AppSettingDefinitions.SamlRegisterRole),
+                ("Saml:LoginIdSource", AppSettingDefinitions.SamlLoginIdSource),
+                ("Saml:LoginIdClaim", AppSettingDefinitions.SamlLoginIdClaim),
+                ("Saml:ButtonLabel", AppSettingDefinitions.SamlButtonLabel),
+                ("PleasanterSso:Enabled", AppSettingDefinitions.PleasanterSsoEnabled),
+                ("PleasanterSso:InternalBaseUrl", AppSettingDefinitions.PleasanterSsoInternalBaseUrl),
+                ("PleasanterSso:LoginUrl", AppSettingDefinitions.PleasanterSsoLoginUrl),
+                ("PleasanterSso:LogoutUrl", AppSettingDefinitions.PleasanterSsoLogoutUrl),
+                ("PleasanterSso:CookieNames", AppSettingDefinitions.PleasanterSsoCookieNames),
+                ("PleasanterSso:AllowedDeptIds", AppSettingDefinitions.PleasanterSsoAllowedDeptIds),
+                ("PleasanterSso:AllowedGroupIds", AppSettingDefinitions.PleasanterSsoAllowedGroupIds),
+                ("PleasanterSso:UnknownUser", AppSettingDefinitions.PleasanterSsoUnknownUser),
+                ("PleasanterSso:RegisterRole", AppSettingDefinitions.PleasanterSsoRegisterRole),
+                ("PleasanterSso:RevalidateMinutes", AppSettingDefinitions.PleasanterSsoRevalidateMinutes),
+                ("PleasanterSso:TimeoutSeconds", AppSettingDefinitions.PleasanterSsoTimeoutSeconds),
+                ("PleasanterSso:ButtonLabel", AppSettingDefinitions.PleasanterSsoButtonLabel)),
+
+            // Pleasanter の Mail.json に倣い、経路ごとの設定（Smtp / AwsSes / Acs）を入れ子にする
+            ["Mail"] = Map(
+                ("Enabled", "ATOMFEED_MAIL_ENABLED"),
+                ("Provider", "ATOMFEED_MAIL_TRANSPORT"),
+                ("FromAddress", "ATOMFEED_MAIL_FROM_ADDRESS"),
+                ("FromName", "ATOMFEED_MAIL_FROM_NAME"),
+                ("ReplyToAddress", "ATOMFEED_MAIL_REPLYTO_ADDRESS"),
+                ("SendTimeoutSeconds", "ATOMFEED_MAIL_TIMEOUT_SECONDS"),
+                ("SendPerMinute", MailSenderOptions.MaxSendsPerMinuteKey),
+                ("Worker", MailSenderOptions.WorkerKey),
+                ("Smtp:Host", "ATOMFEED_MAIL_SMTP_HOST"),
+                ("Smtp:Port", "ATOMFEED_MAIL_SMTP_PORT"),
+                ("Smtp:Security", "ATOMFEED_MAIL_SMTP_SECURITY"),
+                ("Smtp:User", "ATOMFEED_MAIL_SMTP_USER"),
+                ("Smtp:Password", "ATOMFEED_MAIL_SMTP_PASSWORD"),
+                ("AwsSes:Region", "ATOMFEED_MAIL_SES_REGION"),
+                ("Acs:Endpoint", "ATOMFEED_MAIL_ACS_ENDPOINT")),
         }.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private static ImmutableDictionary<string, string> Map(params (string Path, string Setting)[] pairs) =>
+        pairs.ToImmutableDictionary(p => p.Path, p => p.Setting, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// 設定を積む。**アプリの一番先で 1 度だけ呼ぶ**（以降の読み取りが全てこれを見る）。
@@ -169,28 +205,31 @@ public static class ParameterFiles
             : Directory.GetCurrentDirectory();
 
     /// <summary>ファイルのキーを正式な名前へ写したものを作る。</summary>
-    /// <remarks>**写す前に一度だけ読む。** 積んだ後の設定から読むと、環境変数の値まで巻き込んで写してしまう。</remarks>
+    /// <remarks>
+    /// **写す前に一度だけ読む。** 積んだ後の設定から読むと、環境変数の値まで巻き込んで写してしまう。
+    /// **ファイルごとに別々に読む**（同じ名前のキーが別のファイルにあっても混ざらない）。
+    /// </remarks>
     [SuppressMessage(
         "Reliability", "CA2000:Dispose objects before losing scope",
         Justification = "IConfigurationRoot は読み終えた時点で用済み")]
     private static IEnumerable<KeyValuePair<string, string?>> AliasesOf(string directory, bool local)
     {
         var suffix = local ? ".local.json" : ".json";
-        var files = new ConfigurationBuilder();
         foreach (var name in Names)
         {
-            files.AddJsonFile(Path.Combine(directory, $"{name}{suffix}"), optional: true, reloadOnChange: false);
-        }
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile(Path.Combine(directory, $"{name}{suffix}"), optional: true, reloadOnChange: false)
+                .Build();
 
-        var configuration = files.Build();
-        foreach (var (key, setting) in Aliases)
-        {
-            var value = configuration[key];
-
-            // **null と空は写さない。** 環境変数で与えた値を塗り潰さないため
-            if (!string.IsNullOrEmpty(value))
+            foreach (var (path, setting) in Aliases[name])
             {
-                yield return new KeyValuePair<string, string?>(setting, value);
+                var value = configuration[path];
+
+                // **null と空は写さない。** 環境変数で与えた値を塗り潰さないため
+                if (!string.IsNullOrEmpty(value))
+                {
+                    yield return new KeyValuePair<string, string?>(setting, value);
+                }
             }
         }
     }
