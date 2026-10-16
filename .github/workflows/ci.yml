@@ -1,0 +1,110 @@
+# ビルドと単体テスト。
+#
+# **ここで定義したジョブ名は必須ステータスチェックへ登録する。以後変えないこと**
+# （_documents/ブランチ運用方針.md「ブランチ保護」）。名前を変えると、必須チェックが
+# 「待ち続けるが永遠に来ない」状態になり、マージできなくなる。
+#
+# 書き方は Questionnaire の ci.yml に倣った（actions/checkout v7 / actions/setup-dotnet v6）。
+name: CI
+
+on:
+  # **全ブランチへの push で回す。** 根幹ブランチへの PR でも回す。タグの push では回さない
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - develop
+      - master
+
+# 同じブランチの実行が重なったら、古い方は打ち切る
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# **既定を読み取りだけにする。** 書き込みが要るジョブは無い
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+
+jobs:
+  build-test:
+    name: ビルドと単体テスト
+    runs-on: ubuntu-latest
+    steps:
+      - name: ソースを取得する
+        uses: actions/checkout@v7
+        with:
+          # **_reference（Pleasanter 本体・AGPL v3）は取得しない。**
+          # 参照専用であり、ビルドにもテストにも要らない
+          submodules: false
+
+      - name: .NET SDK を用意する
+        uses: actions/setup-dotnet@v6
+        with:
+          # 版は global.json を単一の情報源にする
+          global-json-file: global.json
+
+      - name: 依存を復元する
+        run: dotnet restore VehicleVision.PleasanterTools.AtomFeed.slnx
+
+      - name: ビルドする
+        run: >-
+          dotnet build VehicleVision.PleasanterTools.AtomFeed.slnx
+          --no-restore -c Release
+
+      - name: 単体テストを実行する
+        run: >-
+          dotnet test VehicleVision.PleasanterTools.AtomFeed.slnx
+          --no-build -c Release
+
+  # 管理画面（Svelte）の型検査・単体テスト・組み立て。組み立てた成果物は配布物（.Web の wwwroot/admin）へ入る。
+  # ジョブ名は Questionnaire と同じ「フロントエンド」（必須ステータスチェックの名前をそろえる）
+  admin-ui:
+    name: フロントエンド
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/VehicleVision.PleasanterTools.AtomFeed.Frontend
+    steps:
+      - name: ソースを取得する
+        uses: actions/checkout@v7
+        with:
+          submodules: false
+
+      - name: Node.js を用意する
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: src/VehicleVision.PleasanterTools.AtomFeed.Frontend/package-lock.json
+
+      - name: 依存を復元する
+        run: npm ci
+
+      - name: 型と Svelte を検査する
+        run: npm run check
+
+      - name: 単体テストを実行する
+        run: npm test
+
+      - name: 組み立てる
+        run: npx vite build
+
+  license-check:
+    name: ライセンス検査
+    runs-on: ubuntu-latest
+    steps:
+      - name: ソースを取得する
+        uses: actions/checkout@v7
+        with:
+          submodules: false
+
+      - name: Pleasanter 本体の混入を検査する
+        # **デュアルライセンス（AGPL ＋ 商用）の前提を機械で守る。**
+        # 取り込むと商用ライセンスでの提供ができなくなる（LICENSING.md）
+        run: bash ./scripts/license-check.sh
