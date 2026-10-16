@@ -1,0 +1,37 @@
+## build
+bin/
+obj/
+artifacts/
+*.user
+.vs/
+.idea/
+
+## secrets / local config（API キー・管理キーはコミットしない）
+appsettings.*.local.json
+*.env
+.env.local
+
+## local DB
+*.db
+*.db-shm
+*.db-wal
+
+## logs / test results
+logs/
+*.log
+TestResults/
+
+## 一時成果物: temp/{yyyyMMdd}_{内容}/
+temp/
+
+.claude/settings.local.json
+
+## Parameters のローカル上書き（実値。コミットしない）
+**/App_Data/Parameters/*.local.json
+
+## 本アプリの DB
+**/App_Data/*.db
+
+## 管理画面（Svelte）。組み立て成果物は .Web の wwwroot/admin へ出る（コミットしない。CI・配布時に npm run build）
+**/node_modules/
+src/*.Web/wwwroot/admin/

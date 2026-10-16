@@ -1,0 +1,87 @@
+VehicleVision.PleasanterTools.AtomFeed
+Copyright (C) PMC Co.,Ltd.
+
+--------------------------------------------------------------------------------
+サードパーティソフトウェア
+--------------------------------------------------------------------------------
+
+本ソフトウェアが利用する OSS は、寛容ライセンス（MIT / BSD 系 / Apache-2.0）に限定します。
+依存を追加したら、このファイルへ「名称 / バージョン / ライセンス / 入手元」を追記すること。
+
+名称 / バージョン / ライセンス / 入手元
+
+  Microsoft.Data.Sqlite 10.0.13 / MIT / https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.13
+    （Apache-2.0 の SQLitePCLRaw と、パブリックドメインの SQLite を推移的に伴う。
+      Questionnaire の NOTICE と同じ依存。参照日 2026-10-12）
+
+  Dapper 2.1.89 / Apache-2.0 / https://www.nuget.org/packages/Dapper
+  FluentMigrator 8.0.1 / Apache-2.0 / https://www.nuget.org/packages/FluentMigrator
+  FluentMigrator.Runner 8.0.1 / Apache-2.0
+  FluentMigrator.Runner.SqlServer 8.0.1 / Apache-2.0
+  FluentMigrator.Runner.Postgres 8.0.1 / Apache-2.0
+  FluentMigrator.Runner.MySql 8.0.1 / Apache-2.0
+  FluentMigrator.Runner.SQLite 8.0.1 / Apache-2.0
+  Microsoft.Data.SqlClient 7.1.1 / MIT / https://www.nuget.org/packages/Microsoft.Data.SqlClient
+  Npgsql 10.0.3 / PostgreSQL License（BSD 系の寛容ライセンス） / https://www.nuget.org/packages/Npgsql
+  MySqlConnector 2.6.2 / MIT / https://www.nuget.org/packages/MySqlConnector
+  System.Security.Cryptography.Pkcs 10.0.13 / MIT / https://www.nuget.org/packages/System.Security.Cryptography.Pkcs
+    （推移的依存の脆弱性 GHSA-846f-f764-76mx を避けるための直接参照。参照日 2026-10-14）
+  MailKit 4.18.1 / MIT / https://github.com/jstedfast/MailKit
+    （招待メールの送信。Questionnaire の NOTICE と同じ依存・同じ版。**認証付きリレーの 587 番は Azure でブロックされない**ので、
+      これ 1 本で SendGrid・Amazon SES・Azure Communication Services・Microsoft 365 へ送れる。参照日 2026-10-14）
+  MimeKit 4.18.1 / MIT / https://github.com/jstedfast/MimeKit
+    （MailKit が推移的に伴う。メールの組み立て）
+  BouncyCastle.Cryptography 2.6.2 / MIT / https://github.com/bcgit/bc-csharp
+    （MimeKit が推移的に伴う）
+  AWSSDK.SimpleEmailV2 4.0.106.4 / Apache-2.0 / https://github.com/aws/aws-sdk-net
+    （Amazon SES の送信経路。**IAM ロールで通るので、保管する秘密が 0 になる**。Questionnaire と同じ版）
+  Azure.Communication.Email 1.1.0 / MIT / https://github.com/Azure/azure-sdk-for-net
+    （Azure Communication Services の送信経路。**マネージド ID で通る**）
+  Azure.Identity 1.21.0 / MIT / https://github.com/Azure/azure-sdk-for-net
+    （マネージド ID から資格情報を取る。Azure.Core などを推移的に伴う。同リポジトリの MIT）
+  ITfoxtec.Identity.Saml2 4.21.0 / BSD-3-Clause / https://github.com/ITfoxtec/ITfoxtec.Identity.Saml2
+  ITfoxtec.Identity.Saml2.MvcCore 4.21.0 / BSD-3-Clause / https://github.com/ITfoxtec/ITfoxtec.Identity.Saml2
+    （SAML 2.0 の SP。Questionnaire の NOTICE と同じ依存・同じ版。参照日 2026-10-14。
+      **System.Security.Cryptography.Xml は 10.0.13 以上のランタイムで動かすこと**（10.0.12 以前に高い重大度の勧告がある）。
+      テストプロジェクトは 10.0.13 を明示している）
+  Otp.NET 1.4.1 / MIT / https://github.com/kspearrin/Otp.NET
+    （管理者の TOTP（RFC 6238）。Questionnaire の NOTICE と同じ依存・同じ版。参照日 2026-10-13）
+  Microsoft.Extensions.Configuration 10.0.13 / MIT / https://www.nuget.org/packages/Microsoft.Extensions.Configuration/10.0.13
+  Microsoft.Extensions.Configuration.Abstractions 10.0.13 / MIT / https://www.nuget.org/packages/Microsoft.Extensions.Configuration.Abstractions/10.0.13
+  Microsoft.Extensions.Logging.Abstractions 10.0.13 / MIT / https://www.nuget.org/packages/Microsoft.Extensions.Logging.Abstractions/10.0.13
+  System.Security.Cryptography.Xml 10.0.13 / MIT / https://www.nuget.org/packages/System.Security.Cryptography.Xml/10.0.13
+    （ITfoxtec.Identity.Saml2 が使う署名検証。**直接参照して版を固定している**。参照日 2026-10-15）
+  Microsoft.Extensions.DependencyInjection 10.0.13 / MIT
+    （Dapper 以下は Questionnaire の NOTICE と同じ依存・同じ版。参照日 2026-10-12）
+
+テストのみ（配布物に含まれない）
+
+  Microsoft.AspNetCore.Mvc.Testing 10.0.13 / MIT
+  xunit 2.9.3 / Apache-2.0
+  Microsoft.NET.Test.Sdk 18.11.0 / MIT
+  coverlet.collector 10.1.0 / MIT
+  xunit.runner.visualstudio 4.0.1 / Apache-2.0 / https://www.nuget.org/packages/xunit.runner.visualstudio/4.0.1
+
+管理画面（Svelte。src/VehicleVision.PleasanterTools.AtomFeed.Frontend）の依存 — npm。参照日 2026-10-14。いずれも寛容ライセンス（Questionnaire の Frontend と同じ版）
+
+  svelte 5.57.2 / MIT / https://github.com/sveltejs/svelte
+  @sveltejs/vite-plugin-svelte 7.3.1 / MIT / https://github.com/sveltejs/vite-plugin-svelte
+  vite 8.3.4 / MIT / https://github.com/vitejs/vite
+  sass 1.105.1 / MIT / https://github.com/sass/dart-sass
+  qrcode 1.5.4 / MIT / https://github.com/soldair/node-qrcode
+
+  書体とアイコン（アプリへ同梱する。コードではなくフォントのファイル。Questionnaire の Frontend と同じ版・同じ扱い）。**SIL Open Font License 1.1**
+  （寛容ライセンスの一覧にはないが、フォントの再配布を許す。ソフトウェアとして単独で売らない限り同梱・再配布してよい。商用利用可）
+  @fontsource-variable/noto-sans-jp 5.3.1 / SIL Open Font License 1.1 / https://www.npmjs.com/package/@fontsource-variable/noto-sans-jp
+  @fontsource-variable/m-plus-1-code 5.3.1 / SIL Open Font License 1.1 / https://www.npmjs.com/package/@fontsource-variable/m-plus-1-code
+  @fontsource/material-icons 5.3.0 / SIL Open Font License 1.1 / https://www.npmjs.com/package/@fontsource/material-icons
+    （Material Icons。上流（google/material-design-icons）は Apache-2.0 だが、npm パッケージは OFL-1.1 を宣言している）
+    （2 要素の登録の QR コードをブラウザの中で描く）
+  （ビルド・試験のみ。配布物の JavaScript には含まれない。参照日 2026-10-15）
+  typescript 6.0.3 / Apache-2.0 / https://www.npmjs.com/package/typescript
+  @types/qrcode 1.5.6 / MIT（DefinitelyTyped） / https://www.npmjs.com/package/@types/qrcode
+  （svelte-check 4.7.6 / MIT、vitest 5.0.4 / MIT）
+
+開発専用（画面の写しを撮る。配布物に含まれない）
+
+  playwright-core 1.60.0 / Apache-2.0 / https://github.com/microsoft/playwright
