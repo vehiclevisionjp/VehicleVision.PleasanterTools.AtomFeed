@@ -1,0 +1,36 @@
+using Microsoft.Extensions.Configuration;
+using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
+
+namespace VehicleVision.PleasanterTools.AtomFeed.Web.Tests;
+
+/// <summary>パスワードの条件の設定（<c>PasswordPolicies</c>。CalendarFeed の Issue #29）。</summary>
+public sealed class PasswordPolicySettingsTests
+{
+    private static IConfiguration Configure(params (string Key, string Value)[] values) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(values.ToDictionary(v => v.Key, v => (string?)v.Value))
+            .Build();
+
+    [Fact]
+    public void 設定の条件を上から順に読み_文言を言語で選ぶ()
+    {
+        var options = TestSettings.Build(Configure(
+            ("PasswordPolicies:0:Regex", "[0-9]"),
+            ("PasswordPolicies:0:Languages:0:Language", "ja"),
+            ("PasswordPolicies:0:Languages:0:Body", "数字を含めてください。"),
+            ("PasswordPolicies:0:Languages:1:Body", "Include a digit.")));
+
+        Assert.Equal("数字を含めてください。", options.AdminAuth.PasswordPolicy.Validate("admin", "abcdefghijkl", "ja"));
+        Assert.Equal("Include a digit.", options.AdminAuth.PasswordPolicy.Validate("admin", "abcdefghijkl", "en"));
+        Assert.Null(options.AdminAuth.PasswordPolicy.Validate("admin", "abcdefghijk1"));
+    }
+
+    [Fact]
+    public void 設定が無ければ長さとログインIDだけを見る() =>
+        Assert.Null(TestSettings.Build(Configure()).AdminAuth.PasswordPolicy.Validate("admin", "abcdefghijkl"));
+
+    [Fact]
+    public void 使えない正規表現は起動時に落ちる() =>
+        Assert.Throws<InvalidOperationException>(
+            () => TestSettings.Build(Configure(("PasswordPolicies:0:Regex", "(?=a)"))));
+}
