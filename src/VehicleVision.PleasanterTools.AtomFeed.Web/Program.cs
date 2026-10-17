@@ -151,6 +151,18 @@ if (MigrationCommand.IsRequested(args))
 if (AppSettings.ReadAutoMigrate(app.Configuration))
 {
     DatabaseMigrator.Migrate(db.Provider, db.ConnectionString);
+
+    // ⚠️ **自動で作った鍵は、DB に管理者もフィードも無いときだけ使ってよい。**
+    // 鍵を失ったまま作り直すと、DB に暗号化して置いた API キーや TOTP の共有鍵を復号できない
+    if (generatedKeyFile is not null
+        && (await app.Services.GetRequiredService<IAdminUserStore>().CountAsync() > 0
+            || (await app.Services.GetRequiredService<IFeedStore>().ListAsync()).Count > 0))
+    {
+        SecretKeyBootstrap.Discard(generatedKeyFile);
+        throw new InvalidOperationException(
+            "ATOMFEED_SECRET_KEY was not set and a new key was generated, but the database already has administrators or feeds "
+            + "encrypted with the original key. Set ATOMFEED_SECRET_KEY (or ATOMFEED_SECRET_KEY_FILE) to the original key. The generated key was discarded.");
+    }
 }
 else
 {

@@ -74,14 +74,43 @@ public sealed class SecretKeyBootstrapTests : IDisposable
     }
 
     [Fact]
-    public void 保存できなければ作らない_再起動で鍵を失うため()
+    public void 保存できなければ起動を止める_作っても再起動で鍵を失うため()
     {
         // 置き場の場所にファイルがあるので、ディレクトリを作れず保存に失敗する
         var blocker = Path.Combine(_dir, "blocked");
         File.WriteAllText(blocker, "x");
         var builder = Empty();
 
-        Assert.Null(SecretKeyBootstrap.EnsureKey(builder, Path.Combine(blocker, "Parameters")));
+        var ex = Assert.Throws<InvalidOperationException>(() => SecretKeyBootstrap.EnsureKey(builder, Path.Combine(blocker, "Parameters")));
+
+        Assert.Contains("ATOMFEED_SECRET_KEY", ex.Message);
         Assert.Null(builder.Build()[AppSettings.SecretKey]);
+    }
+
+    [Fact]
+    public void 作った鍵は_Discardでファイルから消せ_他のキーは残る()
+    {
+        File.WriteAllText(Path.Combine(_dir, "Security.local.json"), """{ "AdminTwoFactor": "required" }""");
+        var path = SecretKeyBootstrap.EnsureKey(Empty(), _dir)!;
+
+        SecretKeyBootstrap.Discard(path);
+
+        var saved = JsonNode.Parse(File.ReadAllText(path))!;
+        Assert.Null(saved["SecretKey"]);
+        Assert.Equal("required", (string?)saved["AdminTwoFactor"]);
+    }
+
+    [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416", Justification = "Windows 以外でだけ実行する")]
+    public void 保存したファイルは_所有者だけが読み書きできる()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var path = SecretKeyBootstrap.EnsureKey(Empty(), _dir)!;
+
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
     }
 }

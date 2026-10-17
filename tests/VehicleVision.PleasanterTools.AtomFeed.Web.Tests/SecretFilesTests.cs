@@ -68,18 +68,59 @@ public sealed class SecretFilesTests : IDisposable
     }
 
     [Fact]
-    public void ATOMFEED以外_空のパス_直接の値が空なら_対象にしない()
+    public void ATOMFEED以外_空のパス_名前だけのものは_対象にしない()
     {
         var values = Read(new()
         {
             ["OTHER_X_FILE"] = Secret("no"),
-            ["ATOMFEED_A_FILE"] = string.Empty,
-            ["ATOMFEED_B"] = string.Empty,
+            ["ATOMFEED_A_FILE"] = " ",
+            ["ATOMFEED__FILE"] = Secret("name only"),
+            ["ATOMFEED_FILE"] = Secret("name only"),
             ["ATOMFEED_B_FILE"] = Secret("b"),
         });
 
         Assert.Equal(["ATOMFEED_B"], values.Keys.ToArray());
         Assert.Equal("b", values["ATOMFEED_B"]);
+    }
+
+    [Fact]
+    public void 直接の値が空文字でも_指定があれば競合として落とす_Questionnaireと同じ()
+    {
+        var env = new Dictionary<string, string?> { ["ATOMFEED_B"] = string.Empty, ["ATOMFEED_B_FILE"] = Secret("b") };
+
+        Assert.Throws<InvalidOperationException>(() => Read(env));
+    }
+
+    [Fact]
+    public void 相対パスは受けない_絶対パスだけ()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Read(new() { ["ATOMFEED_SECRET_KEY_FILE"] = "secrets/key.txt" }));
+
+        Assert.Contains("絶対パス", ex.Message);
+    }
+
+    [Fact]
+    public void 大きすぎるファイルは受けない_64KiBまで()
+    {
+        Assert.Equal(new string('a', 64 * 1024), Read(new() { ["ATOMFEED_X_FILE"] = Secret(new string('a', 64 * 1024)) })["ATOMFEED_X"]);
+        Assert.Throws<InvalidOperationException>(() => Read(new() { ["ATOMFEED_X_FILE"] = Secret(new string('a', 64 * 1024 + 1)) }));
+    }
+
+    [Fact]
+    public void ディレクトリを指していたら落とす()
+    {
+        Assert.Throws<InvalidOperationException>(() => Read(new() { ["ATOMFEED_X_FILE"] = _dir }));
+    }
+
+    [Fact]
+    public void 例外のメッセージに値を出さない()
+    {
+        var env = new Dictionary<string, string?> { ["ATOMFEED_SECRET_KEY"] = "direct-value", ["ATOMFEED_SECRET_KEY_FILE"] = Secret("file-value") };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Read(env));
+
+        Assert.DoesNotContain("direct-value", ex.Message);
+        Assert.DoesNotContain("file-value", ex.Message);
     }
 
     [Fact]

@@ -13,8 +13,13 @@ namespace VehicleVision.PleasanterTools.AtomFeed.Web.Services;
 /// （環境変数・ファイルのどちらでも。上書きしない）。
 /// </para>
 /// <para>
-/// ⚠️ **保存できなければ作らない。** 保存できないまま使うと、再起動で鍵を失い、DB に暗号化して置いた API キーが全部使えなくなる。
-/// 読み取り専用のファイルシステムのコンテナなどでは作られないので、デプロイ先の秘密の保管先へ <c>ATOMFEED_SECRET_KEY</c> を置く。
+/// ⚠️ **保存できなければ起動を止める**（IdentityProvider の <c>SecretKeyProvisioner</c> と同じ）。保存できないまま使うと、再起動で鍵を失い、
+/// DB に暗号化して置いた API キーが全部使えなくなる。読み取り専用のファイルシステムのコンテナなどでは、デプロイ先の秘密の保管先へ
+/// <c>ATOMFEED_SECRET_KEY</c>（または <c>ATOMFEED_SECRET_KEY_FILE</c>）を置く。
+/// </para>
+/// <para>
+/// ⚠️ **自動で作った鍵は、DB に管理者もフィードも無いときだけ使ってよい。** 鍵を失ったまま作り直すと、DB に暗号化して置いたものを復号できず、
+/// 黙って別の鍵で動くと気付けない。**作った直後に DB に管理者かフィードがあれば、作った鍵をファイルから消して起動を止める**（<see cref="Discard"/>）。
 /// </para>
 /// <para>
 /// ⚠️ **生成した鍵は、そのディスクが残る限りの鍵。** コンテナを作り直すと消える。本番では、作られた鍵を秘密の保管先へ移す
@@ -36,6 +41,7 @@ public static class SecretKeyBootstrap
     /// </summary>
     /// <param name="builder">設定。**環境変数・ファイルを積んだ後に呼ぶ。**</param>
     /// <param name="directory">Parameters の置き場。</param>
+    /// <exception cref="InvalidOperationException">鍵を保存できなかったとき。</exception>
     public static string? EnsureKey(IConfigurationBuilder builder, string directory)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -56,8 +62,11 @@ public static class SecretKeyBootstrap
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
-            // 保存できないなら作らない（再起動で鍵を失うため）
-            return null;
+            // 保存できないなら止める（作っても、再起動で鍵を失うため）。コンソールへ出る文なので英語
+            throw new InvalidOperationException(
+                $"ATOMFEED_SECRET_KEY is not set, and a new key could not be saved to {path} ({ex.GetType().Name}). "
+                + "Set ATOMFEED_SECRET_KEY (Base64 of 32 bytes; generate with --generate-secret-key) or ATOMFEED_SECRET_KEY_FILE, or make the directory writable.",
+                ex);
         }
 
         builder.AddInMemoryCollection(
@@ -84,6 +93,23 @@ public static class SecretKeyBootstrap
         }
 
         root["SecretKey"] = key;
+        File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
+    /// <summary>自動で作った鍵を、ファイルから消す（DB に暗号化して置いたものが読めなくなる事故を避けるため）。</summary>
+    public static void Discard(string path)
+    {
+        var root = JsonNode.Parse(File.ReadAllText(path), documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip }) as JsonObject;
+        if (root is null)
+        {
+            return;
+        }
+
+        root.Remove("SecretKey");
         File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }
