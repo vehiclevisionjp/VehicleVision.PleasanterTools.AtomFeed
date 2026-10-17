@@ -86,6 +86,7 @@ public static class ParameterFiles
                 ("PasswordMinimumLength", AppSettings.PasswordMinimumLength),
                 ("PasswordAllowSameAsLoginId", AppSettings.PasswordAllowSameAsLoginId),
                 ("SecretKey", AppSettings.SecretKey),
+                ("SecretKeyAutoGenerate", SecretKeyBootstrap.AutoGenerateKey),
                 ("AuditLogRetentionDays", AppSettings.AuditLogRetentionDays),
                 ("ForwardedProxyNetworks", AppSettings.ForwardedProxyNetworks)),
 

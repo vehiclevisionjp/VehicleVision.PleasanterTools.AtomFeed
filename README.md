@@ -34,6 +34,7 @@ dotnet run --project src/VehicleVision.PleasanterTools.AtomFeed.Web
 ```bash
 # 秘密の鍵を作って設定する（フィードごとの Pleasanter API キーと管理者の TOTP を DB へ暗号化して置く鍵。失うと復号できない）
 export ATOMFEED_SECRET_KEY=$(dotnet run --project src/VehicleVision.PleasanterTools.AtomFeed.Web -- --generate-secret-key)
+# 設定しなければ、初回の起動で作って App_Data/Parameters/Security.local.json へ保存する（本番では環境変数へ移す）
 ```
 
 **最初の管理者**は、管理者が 1 人も居ないときだけ作れる（**公開する前に作る**。空の状態を放置しない）。
@@ -97,7 +98,7 @@ cd src/VehicleVision.PleasanterTools.AtomFeed.Frontend
 npm ci && npm test && npm run build
 ```
 
-管理画面の画面の写しは未撮影（[`tools/screenshots`](tools/screenshots/README.md) で撮れる）。
+管理画面の画面の写しは [`_documents/管理画面-画面の写し一覧.md`](_documents/管理画面-画面の写し一覧.md)（[`tools/screenshots`](tools/screenshots/README.md) で撮り直せる）。
 
 **実機（Pleasanter・Keycloak）での通し**は CI の「端から端まで通す試験」（`.github/workflows/e2e.yml`）で回す。手元でも
 `tools/pleasanter-testenv/sso_roundtrip.py`（Pleasanter のログイン）・`tools/saml-idp/e2e.py`（SAML）で通せる。

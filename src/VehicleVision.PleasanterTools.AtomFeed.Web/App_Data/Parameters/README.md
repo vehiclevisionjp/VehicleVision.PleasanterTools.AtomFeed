@@ -86,6 +86,7 @@
 | `Rds.json` | `Provider` | `ATOMFEED_DB_PROVIDER` | `Sqlite`（既定。簡易セットアップとデバッグ用）/ `SqlServer` / `PostgreSql` / `MySql` |
 | `Rds.json` | `ConnectionString` | `ATOMFEED_DB_CONNECTIONSTRING` | 本アプリの DB（Pleasanter の DB とは別）。**実値は書かない** |
 | `Security.json` | `SecretKey` | `ATOMFEED_SECRET_KEY` | フィードごとの API キーと管理者の TOTP の共有鍵を DB へ暗号化して置く鍵（Base64・32 バイト）。**実値は書かない。** `dotnet run -- --generate-secret-key` で作る。**失うと保管した API キーは復号できない** |
+| `Security.json` | `SecretKeyAutoGenerate` | `ATOMFEED_SECRET_KEY_AUTOGENERATE` | `SecretKey` が無いとき、初回の起動で作って `Security.local.json` へ保存するか（既定 `true`）。保存できなければ作らない。**本番では、作られた鍵を環境変数へ移す** |
 | `Security.json` | `AdminTwoFactor` | `ATOMFEED_ADMIN_TWOFACTOR` | 管理者の 2 要素。`required`（登録するまでログインが完了しない）/ `optional`（既定）/ `disabled`（登録の口を閉じる。登録済みの人からは外さない）。**知らない値は起動時に落とす** |
 | `Security.json` | `AuditLogRetentionDays` | `ATOMFEED_AUDITLOG_RETENTION_DAYS` | 監査ログを残す日数（既定 365。`0` なら消さない。読めない値は既定へ） |
 | `Security.json` | `ForwardedProxyNetworks` | `ATOMFEED_FORWARDED_PROXY_NETWORKS` | 転送ヘッダ（`X-Forwarded-*`）を信頼するプロキシのネットワーク（カンマ区切りの CIDR）。**未設定なら誰も信頼しない**（プロキシ配下ではレート制限が全員で共有になる）。CIDR でない値は起動時に落とす |
