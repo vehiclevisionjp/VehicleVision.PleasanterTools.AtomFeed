@@ -62,6 +62,12 @@
 **画面から編集しない設定（起動に要る、またはインスタンスごとの設定）**は、これまでどおりファイル／環境変数だけ:
 `ATOMFEED_DB_*`（接続先・自動マイグレーション）、`ATOMFEED_SECRET_KEY`、`ATOMFEED_FORWARDED_PROXY_NETWORKS`、`PasswordPolicies`（正規表現の条件）、`ATOMFEED_MAIL_WORKER`（`Mail.json` の `Worker`。この台で送信ワーカーを動かすか）、`ATOMFEED_PARAMETERS_DIRECTORY`。
 
+## 値をファイルから読む（`*_FILE`）
+
+**どの設定も、`ATOMFEED_X` の代わりに `ATOMFEED_X_FILE=<パス>` でファイルの中身を値にできる**（Docker secrets・Kubernetes の Secret のマウント）。
+値が環境変数に載らない。末尾の改行は 1 つ落とす。**直接の値と `_FILE` の両方があれば、ファイルが読めない・空のときも、起動時に落ちる。**
+優先順位は環境変数と同じ位置。手順は [`導入-更新運用手順書.md`](../../../../_documents/導入-更新運用手順書.md) の「値をファイルから読む」。
+
 ## ファイルと環境変数
 
 ファイルのキーは Pleasanter 本体に合わせた短い名前で、環境変数は `ATOMFEED_*`。

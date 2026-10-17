@@ -27,7 +27,7 @@ public static class SecretKeyBootstrap
     public const string AutoGenerateKey = "ATOMFEED_SECRET_KEY_AUTOGENERATE";
 
     /// <summary>生成して保存したファイルのパス（生成したときだけ入る。起動のログに出す）。</summary>
-    public const string GeneratedFileKey = "ATOMFEED_SECRET_KEY_GENERATED_FILE";
+    public const string GeneratedFileKey = "ATOMFEED_SECRET_KEY_GENERATED_PATH";
 
     private const string FileName = "Security.local.json";
 

@@ -162,8 +162,9 @@ public static class ParameterFiles
 
         builder.AddInMemoryCollection(AliasesOf(resolved, local: false));
 
-        // ---- 2. 環境変数
+        // ---- 2. 環境変数（と、Docker secrets などの `{名前}_FILE`＝値を読むファイルの置き場）
         builder.AddEnvironmentVariables();
+        builder.AddInMemoryCollection(SecretFiles(EnvironmentOf().AsReadOnly()));
 
         // ---- 3. {名前}.local.json（一番強い。git 管理外）
         foreach (var name in Names)
@@ -179,6 +180,79 @@ public static class ParameterFiles
             new KeyValuePair<string, string?>(DirectoryKey, resolved),
             new KeyValuePair<string, string?>(FoundFilesKey, string.Join(" / ", FoundIn(resolved))),
         ]);
+    }
+
+    /// <summary>値をファイルから読むときの、環境変数の名前の末尾（<c>ATOMFEED_SECRET_KEY_FILE</c> など）。</summary>
+    public const string FileSuffix = "_FILE";
+
+    /// <summary>プロセスの環境変数（名前 → 値）。</summary>
+    private static Dictionary<string, string?> EnvironmentOf() =>
+        Environment.GetEnvironmentVariables()
+            .Cast<System.Collections.DictionaryEntry>()
+            .ToDictionary(e => (string)e.Key, e => e.Value as string, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// <c>ATOMFEED_X_FILE=/run/secrets/x</c> の形で、<c>ATOMFEED_X</c> の値を**ファイルから読む**（Docker secrets・Kubernetes の Secret のマウントなど）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// **値は環境変数に載せずに済む**（<c>docker inspect</c> や <c>/proc/…/environ</c> に出ない）。Docker の公式イメージが使う <c>*_FILE</c> の約束に倣う。
+    /// 末尾の改行（1 つ）は落とす。複数行（証明書など）はそのまま読める。
+    /// </para>
+    /// <para>
+    /// **同じ設定に <c>ATOMFEED_X</c> と <c>ATOMFEED_X_FILE</c> の両方があれば、起動時に落とす**（どちらが効くか分からないため）。
+    /// ファイルが読めない・空のときも落とす（**黙って未設定で動くと、鍵の自動生成などが働いて気付けない**）。
+    /// 設定の優先順位は、環境変数と同じ位置（<c>{名前}.local.json</c> より弱い）。
+    /// </para>
+    /// </remarks>
+    /// <param name="environment">環境変数（名前 → 値）。</param>
+    public static IEnumerable<KeyValuePair<string, string?>> SecretFiles(IReadOnlyDictionary<string, string?> environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+
+        foreach (var (name, path) in environment)
+        {
+            if (!name.StartsWith("ATOMFEED_", StringComparison.OrdinalIgnoreCase)
+                || !name.EndsWith(FileSuffix, StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrEmpty(path))
+            {
+                continue;
+            }
+
+            var setting = name[..^FileSuffix.Length];
+            if (environment.TryGetValue(setting, out var direct) && !string.IsNullOrEmpty(direct))
+            {
+                throw new InvalidOperationException(
+                    $"{setting} と {name} の両方が設定されています。どちらか一方にしてください。");
+            }
+
+            string value;
+            try
+            {
+                value = File.ReadAllText(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw new InvalidOperationException($"{name} が指すファイルを読めません: {path}（{ex.GetType().Name}）", ex);
+            }
+
+            // 末尾の改行を 1 つだけ落とす（echo や エディタが付ける）
+            if (value.EndsWith("\r\n", StringComparison.Ordinal))
+            {
+                value = value[..^2];
+            }
+            else if (value.EndsWith('\n'))
+            {
+                value = value[..^1];
+            }
+
+            if (value.Length == 0)
+            {
+                throw new InvalidOperationException($"{name} が指すファイルが空です: {path}");
+            }
+
+            yield return new KeyValuePair<string, string?>(setting, value);
+        }
     }
 
     /// <summary>実際に置いてあるファイルの名前。</summary>
