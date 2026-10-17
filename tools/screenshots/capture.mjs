@@ -272,7 +272,7 @@ try {
 
   // 10. 英語・スマートフォン幅
   await page.selectOption('select.lang', 'en');
-  await page.waitForSelector('text=Subscription feeds');
+  await page.waitForSelector('text=Feeds');
   await shot(page, 'フィード-英語');
   await page.setViewportSize({ width: 390, height: 800 });
   await shot(page, 'フィード-スマートフォン幅');

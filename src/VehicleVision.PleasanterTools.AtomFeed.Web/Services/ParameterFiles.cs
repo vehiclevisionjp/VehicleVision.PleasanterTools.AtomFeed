@@ -86,6 +86,7 @@ public static class ParameterFiles
                 ("PasswordMinimumLength", AppSettings.PasswordMinimumLength),
                 ("PasswordAllowSameAsLoginId", AppSettings.PasswordAllowSameAsLoginId),
                 ("SecretKey", AppSettings.SecretKey),
+                ("SecretKeyAutoGenerate", SecretKeyBootstrap.AutoGenerateKey),
                 ("AuditLogRetentionDays", AppSettings.AuditLogRetentionDays),
                 ("ForwardedProxyNetworks", AppSettings.ForwardedProxyNetworks)),
 
@@ -161,8 +162,9 @@ public static class ParameterFiles
 
         builder.AddInMemoryCollection(AliasesOf(resolved, local: false));
 
-        // ---- 2. 環境変数
+        // ---- 2. 環境変数（と、Docker secrets などの `{名前}_FILE`＝値を読むファイルの置き場）
         builder.AddEnvironmentVariables();
+        builder.AddInMemoryCollection(SecretFiles(EnvironmentOf().AsReadOnly()));
 
         // ---- 3. {名前}.local.json（一番強い。git 管理外）
         foreach (var name in Names)
@@ -178,6 +180,110 @@ public static class ParameterFiles
             new KeyValuePair<string, string?>(DirectoryKey, resolved),
             new KeyValuePair<string, string?>(FoundFilesKey, string.Join(" / ", FoundIn(resolved))),
         ]);
+    }
+
+    /// <summary>値をファイルから読むときの、環境変数の名前の末尾（<c>ATOMFEED_SECRET_KEY_FILE</c> など）。</summary>
+    public const string FileSuffix = "_FILE";
+
+    /// <summary>環境変数の接頭辞。<c>ATOMFEED_</c> で始まるものだけを対象にする。</summary>
+    private const string EnvironmentPrefix = "ATOMFEED_";
+
+    /// <summary>秘密のファイルに許す最大サイズ（Questionnaire と同じ 64 KiB）。</summary>
+    public const int MaximumFileSizeBytes = 64 * 1024;
+
+    /// <summary>プロセスの環境変数（名前 → 値）。</summary>
+    private static Dictionary<string, string?> EnvironmentOf() =>
+        Environment.GetEnvironmentVariables()
+            .Cast<System.Collections.DictionaryEntry>()
+            .ToDictionary(e => (string)e.Key, e => e.Value as string, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// <c>ATOMFEED_X_FILE=/run/secrets/x</c> の形で、<c>ATOMFEED_X</c> の値を**ファイルから読む**（Docker secrets・Kubernetes の Secret のマウントなど）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// **値は環境変数に載せずに済む**（<c>docker inspect</c> や <c>/proc/…/environ</c> に出ない）。
+    /// **Questionnaire（<c>QUESTIONNAIRE_*_FILE</c>）・IdentityProvider（<c>IDP_*_FILE</c>）と同じ挙動にそろえてある。**
+    /// </para>
+    /// <list type="bullet">
+    /// <item>末尾の改行（<c>\n</c> か <c>\r\n</c> を 1 つ）だけを落とす。複数行（証明書など）はそのまま読める</item>
+    /// <item>**絶対パスだけ**を受ける（相対パスは、起動した場所で指す先が変わる）</item>
+    /// <item>**64 KiB を超えるファイルは受けない**（秘密ではなく、別のファイルを指している）</item>
+    /// <item>**同じ設定に <c>ATOMFEED_X</c> と <c>ATOMFEED_X_FILE</c> の両方があれば、起動時に落とす**（どちらが効くか分からないため）</item>
+    /// <item>ファイルが読めない・空のときも落とす（**黙って未設定で動くと、鍵の自動生成などが働いて気付けない**）</item>
+    /// <item>**値は例外のメッセージへ出さない。** パスだけを出す</item>
+    /// </list>
+    /// <para>設定の優先順位は、環境変数と同じ位置（<c>{名前}.local.json</c> より弱く、<c>{名前}.json</c> より強い）。</para>
+    /// </remarks>
+    /// <param name="environment">環境変数（名前 → 値）。</param>
+    /// <exception cref="InvalidOperationException">上のいずれかに当たるとき。</exception>
+    public static IEnumerable<KeyValuePair<string, string?>> SecretFiles(IReadOnlyDictionary<string, string?> environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+
+        foreach (var (name, path) in environment)
+        {
+            if (!name.StartsWith(EnvironmentPrefix, StringComparison.OrdinalIgnoreCase)
+                || !name.EndsWith(FileSuffix, StringComparison.OrdinalIgnoreCase)
+                || name.Length <= EnvironmentPrefix.Length + FileSuffix.Length
+                || string.IsNullOrWhiteSpace(path))
+            {
+                continue;
+            }
+
+            var setting = name[..^FileSuffix.Length];
+            if (environment.TryGetValue(setting, out var direct) && direct is not null)
+            {
+                throw new InvalidOperationException(
+                    $"環境変数 '{setting}' と '{name}' は同時に指定できません。");
+            }
+
+            yield return new KeyValuePair<string, string?>(setting, ReadSecret(name, path));
+        }
+    }
+
+    private static string ReadSecret(string name, string path)
+    {
+        if (!Path.IsPathFullyQualified(path))
+        {
+            throw new InvalidOperationException($"環境変数 '{name}' には絶対パスを指定してください。");
+        }
+
+        string value;
+        try
+        {
+            var file = new FileInfo(path);
+            if (!file.Exists)
+            {
+                throw new InvalidOperationException($"環境変数 '{name}' のファイルが見つかりません: {path}");
+            }
+
+            if (file.Length > MaximumFileSizeBytes)
+            {
+                throw new InvalidOperationException($"環境変数 '{name}' のファイルが大きすぎます（上限 {MaximumFileSizeBytes / 1024} KiB）: {path}");
+            }
+
+            value = File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            // 例外のメッセージは出さない（値・パスの余計な情報を避ける）
+            throw new InvalidOperationException($"環境変数 '{name}' のファイルを読み取れません: {path}");
+        }
+
+        // 末尾の改行を 1 つだけ落とす（echo やエディタが付ける）
+        if (value.EndsWith("\r\n", StringComparison.Ordinal))
+        {
+            value = value[..^2];
+        }
+        else if (value.EndsWith('\n'))
+        {
+            value = value[..^1];
+        }
+
+        return value.Length == 0
+            ? throw new InvalidOperationException($"環境変数 '{name}' のファイルは空です: {path}")
+            : value;
     }
 
     /// <summary>実際に置いてあるファイルの名前。</summary>

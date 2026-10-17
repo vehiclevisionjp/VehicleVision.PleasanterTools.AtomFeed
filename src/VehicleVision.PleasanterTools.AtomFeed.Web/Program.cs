@@ -29,6 +29,9 @@ var builder = WebApplication.CreateBuilder(args);
 // 優先順位は {名前}.local.json ＞ 環境変数 ＞ {名前}.json（App_Data/Parameters/README.md）
 builder.Configuration.AddParameterFiles();
 
+// ---- 秘密の鍵が無ければ、初回の起動で作って Security.local.json へ保存する（保存できなければ作らない） ----
+var generatedKeyFile = SecretKeyBootstrap.EnsureKey(builder.Configuration, builder.Configuration[ParameterFiles.DirectoryKey]!);
+
 // ---- 設定は DI の生成時に読む（テストからの上書きを効かせるため） ---------------
 // ---- アプリケーション設定（管理画面から編集できる設定。Questionnaire に則る） -------------------------
 // 優先順位は 外部設定（環境変数・Parameters。固定）＞ DB ＞ 既定値。使う側は、使うたびに RuntimeSettings.Current を読む。
@@ -121,6 +124,13 @@ app.Logger.LogInformation(
     "設定ファイルの置き場: {Directory} / 見つかったファイル: {Files}",
     app.Configuration[ParameterFiles.DirectoryKey],
     app.Configuration[ParameterFiles.FoundFilesKey]);
+if (generatedKeyFile is not null)
+{
+    app.Logger.LogWarning(
+        "秘密の鍵（ATOMFEED_SECRET_KEY）が無かったので作り、{File} へ保存しました。本番では、この値をデプロイ先の秘密の保管先へ移してください（失うと保管した API キーを復号できません）。",
+        generatedKeyFile);
+}
+
 if (string.IsNullOrEmpty(app.Configuration[ParameterFiles.FoundFilesKey]))
 {
     app.Logger.LogWarning("設定ファイルが 1 つも見つかりません。置き場を確かめてください。");
@@ -141,6 +151,18 @@ if (MigrationCommand.IsRequested(args))
 if (AppSettings.ReadAutoMigrate(app.Configuration))
 {
     DatabaseMigrator.Migrate(db.Provider, db.ConnectionString);
+
+    // ⚠️ **自動で作った鍵は、DB に管理者もフィードも無いときだけ使ってよい。**
+    // 鍵を失ったまま作り直すと、DB に暗号化して置いた API キーや TOTP の共有鍵を復号できない
+    if (generatedKeyFile is not null
+        && (await app.Services.GetRequiredService<IAdminUserStore>().CountAsync() > 0
+            || (await app.Services.GetRequiredService<IFeedStore>().ListAsync()).Count > 0))
+    {
+        SecretKeyBootstrap.Discard(generatedKeyFile);
+        throw new InvalidOperationException(
+            "ATOMFEED_SECRET_KEY was not set and a new key was generated, but the database already has administrators or feeds "
+            + "encrypted with the original key. Set ATOMFEED_SECRET_KEY (or ATOMFEED_SECRET_KEY_FILE) to the original key. The generated key was discarded.");
+    }
 }
 else
 {
