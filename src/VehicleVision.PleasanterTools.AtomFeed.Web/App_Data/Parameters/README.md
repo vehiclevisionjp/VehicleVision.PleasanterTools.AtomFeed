@@ -34,13 +34,15 @@
 
 ## 管理画面から編集できる設定
 
-**Questionnaire の「アプリケーション設定」と同じ方式。** 次の設定は DB（`AppSettings` 表）へ保管し、管理画面（`GET/PUT /admin/api/settings/`・権限 `settings.manage`＝Administrator のみ）から編集できる。
+**Questionnaire の「アプリケーション設定」と同じ方式。** 次の設定は DB（`AppSettings` 表）へ保管し、管理画面（`GET/PUT /admin/api/settings/`・権限
+`settings.manage`＝Administrator のみ）から編集できる。
 
 - **優先順位は 外部設定（このフォルダのファイル・環境変数）＞ DB ＞ 既定値。**
 - **外部設定に値があるものは「固定」**になり、画面からは変えられない（画面にも固定と出る）。**同梱のファイルは、画面から編集できる設定の値を `null` にしてある**（値を書くと固定される）。
   既定値はコードにある。運用で画面から変えさせたくない設定だけ、ここか環境変数に書く。
 - **保存したら、その台へはすぐ反映され、他の台へは 30 秒以内に反映される**（再起動は要らない）。
-- **秘密（SMTP パスワード・Pleasanter の共通 API キー）は暗号化して保管し**（`ATOMFEED_SECRET_KEY`）、**画面へは返さない**（登録済みかどうかだけ）。保存するとき、空なら変えない。`null` なら消す。
+- **秘密（SMTP パスワード・Pleasanter の共通 API キー）は暗号化して保管し**（`ATOMFEED_SECRET_KEY`）、**画面へは返さない**（登録済みかどうかだけ）。保存するとき、空なら変えない。
+  `null` なら消す。
   ⚠️ **秘密の鍵を失うと保管した秘密は復号できない**: 起動は止まらず、その設定は空として扱われ、画面で再入力を求める。
 - 変えた設定の**名前だけ**を監査ログへ残す（値・秘密は残さない）。
 
@@ -60,7 +62,8 @@
 （上の一覧に無い名前のファイルは読まれない）。
 
 **画面から編集しない設定（起動に要る、またはインスタンスごとの設定）**は、これまでどおりファイル／環境変数だけ:
-`ATOMFEED_DB_*`（接続先・自動マイグレーション）、`ATOMFEED_SECRET_KEY`、`ATOMFEED_FORWARDED_PROXY_NETWORKS`、`PasswordPolicies`（正規表現の条件）、`ATOMFEED_MAIL_WORKER`（`Mail.json` の `Worker`。この台で送信ワーカーを動かすか）、`ATOMFEED_PARAMETERS_DIRECTORY`。
+`ATOMFEED_DB_*`（接続先・自動マイグレーション）、`ATOMFEED_SECRET_KEY`、`ATOMFEED_FORWARDED_PROXY_NETWORKS`、`PasswordPolicies`（正規表現の条件）、
+`ATOMFEED_MAIL_WORKER`（`Mail.json` の `Worker`。この台で送信ワーカーを動かすか）、`ATOMFEED_PARAMETERS_DIRECTORY`。
 
 ## 値をファイルから読む（`*_FILE`）
 
@@ -114,9 +117,9 @@ Questionnaire・IdentityProvider と同じ約束。
 > **`ATOMFEED_SECRET_KEY` は環境変数で保持する**（Azure App Service のアプリケーション設定・Key Vault の参照など、
 > デプロイ先の秘密の保管先へ）。`Security.local.json` はローカル開発用。失うと保管した API キーを復号できないため、
 > コンテナやディスクが作り直されても残る場所に置く。
-
+>
 > ⚠️ **値が `null` や空のキーは無視する。** `ApiKey` は既定で `null`（ここへ書かせない）なので、
 > 写すと**環境変数で与えた API キーを空で塗り潰してしまう。**
-
+>
 > ⚠️ **環境変数の名前を `Pleasanter__BaseUrl` のような .NET の階層形式で与えても効かない。**
 > 上表の `ATOMFEED_*` を使う。
