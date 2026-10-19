@@ -5,7 +5,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Caching.Memory;
 using VehicleVision.PleasanterTools.AtomFeed.Data;
-using VehicleVision.PleasanterTools.AtomFeed.Mail;
+using VehicleVision.PleasanterTools.Core.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Feeds;
 using VehicleVision.PleasanterTools.AtomFeed.Pleasanter;
 using VehicleVision.PleasanterTools.AtomFeed.Security;

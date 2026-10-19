@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using VehicleVision.PleasanterTools.AtomFeed.Admin;
 using VehicleVision.PleasanterTools.AtomFeed.Data;
 using VehicleVision.PleasanterTools.AtomFeed.Feeds;
-using VehicleVision.PleasanterTools.AtomFeed.Mail;
+using VehicleVision.PleasanterTools.Core.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Security;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
 

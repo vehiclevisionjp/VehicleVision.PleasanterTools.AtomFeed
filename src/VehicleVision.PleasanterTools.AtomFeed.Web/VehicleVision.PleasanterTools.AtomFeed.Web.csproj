@@ -15,7 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\VehicleVision.PleasanterTools.AtomFeed.Core\VehicleVision.PleasanterTools.AtomFeed.Core.csproj" />
     <ProjectReference Include="..\VehicleVision.PleasanterTools.AtomFeed.Data\VehicleVision.PleasanterTools.AtomFeed.Data.csproj" />
-    <ProjectReference Include="..\VehicleVision.PleasanterTools.AtomFeed.Mail\VehicleVision.PleasanterTools.AtomFeed.Mail.csproj" />
+    <PackageReference Include="VehicleVision.PleasanterTools.Core.Mail" Version="0.1.0-preview.2" />
     <ProjectReference Include="..\VehicleVision.PleasanterTools.AtomFeed.Pleasanter\VehicleVision.PleasanterTools.AtomFeed.Pleasanter.csproj" />
   </ItemGroup>
 

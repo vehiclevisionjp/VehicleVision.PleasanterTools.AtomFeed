@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Configuration;
-using VehicleVision.PleasanterTools.AtomFeed.Mail;
+using VehicleVision.PleasanterTools.Core.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
 
 namespace VehicleVision.PleasanterTools.AtomFeed.Web.Tests;
