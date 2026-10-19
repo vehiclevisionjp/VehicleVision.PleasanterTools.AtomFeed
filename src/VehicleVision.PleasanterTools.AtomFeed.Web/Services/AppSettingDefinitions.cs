@@ -3,7 +3,7 @@ using System.Collections.Frozen;
 using System.Globalization;
 using System.Net.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Admin;
-using VehicleVision.PleasanterTools.AtomFeed.Mail;
+using VehicleVision.PleasanterTools.Core.Mail;
 
 namespace VehicleVision.PleasanterTools.AtomFeed.Web.Services;
 
