@@ -67,7 +67,7 @@ public sealed class FeedStore(IDbConnectionFactory connections, ISecretProtector
                 MappingJson = JsonSerializer.Serialize(mapping, Json),
                 FiltersJson = JsonSerializer.Serialize(filters, Json),
                 TokenHash = FeedTokens.Hash(token),
-                CreatedAt = feed.CreatedAt.ToString("O", CultureInfo.InvariantCulture),
+                CreatedAt = DbTime.ForDb(feed.CreatedAt.UtcDateTime),
                 Language = language,
                 ApiKeyCipher = hasKey ? protector.Protect(access.ApiKey!, ContextOf(id)) : null,
                 ApiKeyHint = feed.ApiKeyHint,
@@ -173,7 +173,7 @@ public sealed class FeedStore(IDbConnectionFactory connections, ISecretProtector
             new
             {
                 Id = id.ToString("D"),
-                At = DbTime.Format(result.At),
+                At = DbTime.ForDb(result.At.UtcDateTime),
                 Status = AuditText.Safe(result.Status, 32),
                 // 制御文字を落として桁で切る（桁溢れで記録が落ちないように。API キーは渡さない前提）
                 Message = AuditText.Safe(result.Message, 500),
@@ -193,7 +193,7 @@ public sealed class FeedStore(IDbConnectionFactory connections, ISecretProtector
         return await connection.ExecuteAsync(new CommandDefinition(
             Sql("UPDATE [Feeds] SET [FailureNotifiedAt] = @Now WHERE [Id] = @Id "
                 + "AND ([FailureNotifiedAt] IS NULL OR [FailureNotifiedAt] <= @Threshold)"),
-            new { Id = id.ToString("D"), Now = DbTime.Format(now), Threshold = DbTime.Format(now - repeatAfter) },
+            new { Id = id.ToString("D"), Now = DbTime.ForDb(now.UtcDateTime), Threshold = DbTime.ForDb((now - repeatAfter).UtcDateTime) },
             cancellationToken: cancellationToken)).ConfigureAwait(false) > 0;
     }
 
@@ -240,7 +240,7 @@ public sealed class FeedStore(IDbConnectionFactory connections, ISecretProtector
 
         public string FiltersJson { get; set; } = "";
 
-        public string CreatedAt { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
 
         public int IsRevoked { get; set; }
 
@@ -250,7 +250,7 @@ public sealed class FeedStore(IDbConnectionFactory connections, ISecretProtector
 
         public string? ApiKeyHint { get; set; }
 
-        public string? LastFetchAt { get; set; }
+        public DateTime? LastFetchAt { get; set; }
 
         public string? LastFetchStatus { get; set; }
 
@@ -271,12 +271,12 @@ public sealed class FeedStore(IDbConnectionFactory connections, ISecretProtector
             JsonSerializer.Deserialize<FeedMapping>(MappingJson, Json) ?? new FeedMapping(),
             JsonSerializer.Deserialize<Dictionary<string, string>>(FiltersJson, Json)
                 ?? new Dictionary<string, string>(),
-            DateTimeOffset.Parse(CreatedAt, CultureInfo.InvariantCulture),
+            DbTime.AsUtc(CreatedAt),
             IsRevoked != 0,
             Language,
             ApiKeyUserTimeZoneId,
             ApiKeyHint,
-            DbTime.Parse(LastFetchAt) is { } at && !string.IsNullOrEmpty(LastFetchStatus)
+            DbTime.AsUtc(LastFetchAt) is { } at && !string.IsNullOrEmpty(LastFetchStatus)
                 ? new FeedFetchResult(at, LastFetchStatus, LastFetchMessage, LastFetchEntryCount, ConsecutiveFailures)
                 : null,
             // 列が空（NULL）の側は無制限。行ごとに必ず持つ

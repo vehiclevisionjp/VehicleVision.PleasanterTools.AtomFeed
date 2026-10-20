@@ -1,6 +1,6 @@
 using System.Net;
 using System.Globalization;
-using VehicleVision.PleasanterTools.AtomFeed.Mail;
+using VehicleVision.PleasanterTools.Core.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Pleasanter;
 using VehicleVision.PleasanterTools.AtomFeed.Admin;
 using VehicleVision.PleasanterTools.AtomFeed.Security;

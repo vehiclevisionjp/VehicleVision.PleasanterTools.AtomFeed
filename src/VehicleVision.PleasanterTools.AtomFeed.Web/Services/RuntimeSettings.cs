@@ -1,5 +1,5 @@
 using System.Globalization;
-using VehicleVision.PleasanterTools.AtomFeed.Mail;
+using VehicleVision.PleasanterTools.Core.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Pleasanter;
 using VehicleVision.PleasanterTools.AtomFeed.Security;
 
@@ -88,7 +88,7 @@ public sealed class RuntimeSettings : IPleasanterOptionsSource
             .Where(d => d.Group == AppSettingGroups.Mail)
             .Where(d => V(d.Key).Length > 0)
             .ToDictionary(d => d.Key, d => (string?)V(d.Key), StringComparer.Ordinal);
-        var mail = MailOptions.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(mailValues).Build());
+        var mail = MailOptions.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(mailValues).Build(), AtomFeedMailSettings.Prefix);
 
         var mailSender = new MailSenderOptions
         {

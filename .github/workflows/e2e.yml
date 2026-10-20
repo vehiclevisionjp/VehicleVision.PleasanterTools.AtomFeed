@@ -12,7 +12,7 @@
 # 最新に追随させると、壊れた原因が自分の変更か相手の更新かを切り分けられなくなる。
 #
 # **ドキュメントだけの PR では回さない**（下の paths）。
-name: 端から端まで通す試験
+name: E2E Tests
 
 on:
   push:
@@ -52,7 +52,7 @@ env:
 
 jobs:
   pleasanter:
-    name: 端から端まで通す試験（Pleasanter）
+    name: e2e / pleasanter
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -142,7 +142,7 @@ jobs:
         run: docker compose down -v
 
   saml:
-    name: 端から端まで通す試験（SAML）
+    name: e2e / saml
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
