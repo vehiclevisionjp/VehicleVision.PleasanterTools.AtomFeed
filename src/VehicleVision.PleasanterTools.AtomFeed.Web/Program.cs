@@ -55,10 +55,10 @@ builder.Services.AddSingleton<FeedService>();
 builder.Services.AddSingleton(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
-    var provider = AtomFeedDatabase.ParseProvider(AppSettings.Text(configuration, AppSettings.DbProvider));
+    var provider = AtomFeedDatabase.Instance.ParseProvider(AppSettings.Text(configuration, AppSettings.DbProvider), DatabaseProvider.Sqlite);
     return new DatabaseConnectionInfo(
         provider,
-        AtomFeedDatabase.ResolveConnectionString(
+        AtomFeedDatabase.Instance.ResolveConnectionString(
             provider,
             AppSettings.Text(configuration, AppSettings.DbConnectionString),
             sp.GetRequiredService<IHostEnvironment>().ContentRootPath));
@@ -155,7 +155,7 @@ if (MigrationCommand.IsRequested(args))
 
 if (AppSettings.ReadAutoMigrate(app.Configuration))
 {
-    await AtomFeedDatabase.Migrator.MigrateUpWithLockAsync(db.Provider, db.ConnectionString, AtomFeedDatabase.MigrationLockTimeout);
+    await AtomFeedDatabase.Instance.Migrator.MigrateUpWithLockAsync(db.Provider, db.ConnectionString, AppDatabase.DefaultMigrationLockTimeout);
 
     // ⚠️ **自動で作った鍵は、DB に管理者もフィードも無いときだけ使ってよい。**
     // 鍵を失ったまま作り直すと、DB に暗号化して置いた API キーや TOTP の共有鍵を復号できない
@@ -224,7 +224,7 @@ app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }))
     .DisableRateLimiting();
 app.MapGet("/ready", async (DatabaseConnectionInfo database, CancellationToken cancellationToken) =>
 {
-    var failure = await AtomFeedDatabase.Migrator.WaitForDatabaseAsync(
+    var failure = await AtomFeedDatabase.Instance.Migrator.WaitForDatabaseAsync(
         database.Provider, database.ConnectionString, TimeSpan.Zero, cancellationToken);
     return failure is null
         ? Results.Ok(new { status = "ready" })
