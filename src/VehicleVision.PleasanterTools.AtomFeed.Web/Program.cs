@@ -70,7 +70,12 @@ builder.Services.AddSingleton<IDbConnectionFactory>(sp =>
 });
 builder.Services.AddSingleton(sp => AppSettings.ReadSecretProtector(sp.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton<IFeedStore, FeedStore>();
-builder.Services.AddSingleton<IAdminUserStore, AdminUserStore>();
+builder.Services.AddSingleton<ISecretCipher, SecretCipherAdapter>();
+builder.Services.AddSingleton<IAdminUserStore>(sp => new AdminUserStore(
+    sp.GetRequiredService<IDbConnectionFactory>(),
+    sp.GetRequiredService<ISecretCipher>(),
+    sp.GetRequiredService<TimeProvider>(),
+    AtomFeedDatabase.Instance.AppId));
 builder.Services.AddSingleton<IAdminSessionStore, AdminSessionStore>();
 builder.Services.AddSingleton<IAuditLogStore, AuditLogStore>();
 builder.Services.AddSingleton<IAdminInvitationStore, AdminInvitationStore>();
