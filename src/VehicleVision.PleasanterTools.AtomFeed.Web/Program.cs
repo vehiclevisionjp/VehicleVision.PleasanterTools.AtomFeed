@@ -52,16 +52,21 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<PleasanterClient>();
 builder.Services.AddSingleton<FeedFailureNotifier>();
 builder.Services.AddSingleton<FeedService>();
-builder.Services.AddSingleton<IDbConnectionFactory>(sp =>
+builder.Services.AddSingleton(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
-    var provider = DbConnectionFactory.ParseProvider(AppSettings.Text(configuration, AppSettings.DbProvider));
-    return new DbConnectionFactory(
+    var provider = AtomFeedDatabase.ParseProvider(AppSettings.Text(configuration, AppSettings.DbProvider));
+    return new DatabaseConnectionInfo(
         provider,
-        DbConnectionFactory.ResolveConnectionString(
+        AtomFeedDatabase.ResolveConnectionString(
             provider,
             AppSettings.Text(configuration, AppSettings.DbConnectionString),
             sp.GetRequiredService<IHostEnvironment>().ContentRootPath));
+});
+builder.Services.AddSingleton<IDbConnectionFactory>(sp =>
+{
+    var database = sp.GetRequiredService<DatabaseConnectionInfo>();
+    return new DbConnectionFactory(database.Provider, database.ConnectionString);
 });
 builder.Services.AddSingleton(sp => AppSettings.ReadSecretProtector(sp.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton<IFeedStore, FeedStore>();
@@ -138,7 +143,7 @@ if (string.IsNullOrEmpty(app.Configuration[ParameterFiles.FoundFilesKey]))
 
 // ---- DB のマイグレーション ---------------------------------------------------------
 // 起動時に自動で当てる（ATOMFEED_DB_AUTOMIGRATE=false で無効。その場合は手で当てる）
-var db = app.Services.GetRequiredService<IDbConnectionFactory>();
+var db = app.Services.GetRequiredService<DatabaseConnectionInfo>();
 app.Logger.LogInformation("DB: {Provider}", db.Provider);
 
 // **`--migrate` ならマイグレーションだけ当てて終わる**（AKS の起動前フック・自動適用を止めた導入先のため）
@@ -150,7 +155,7 @@ if (MigrationCommand.IsRequested(args))
 
 if (AppSettings.ReadAutoMigrate(app.Configuration))
 {
-    DatabaseMigrator.Migrate(db.Provider, db.ConnectionString);
+    await AtomFeedDatabase.Migrator.MigrateUpWithLockAsync(db.Provider, db.ConnectionString, AtomFeedDatabase.MigrationLockTimeout);
 
     // ⚠️ **自動で作った鍵は、DB に管理者もフィードも無いときだけ使ってよい。**
     // 鍵を失ったまま作り直すと、DB に暗号化して置いた API キーや TOTP の共有鍵を復号できない
@@ -217,9 +222,9 @@ app.UseRateLimiter();
 // **ここで見る依存先は本アプリの DB だけ。** 例外の中身は接続先や資格情報を含み得るので応答へ出さない
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }))
     .DisableRateLimiting();
-app.MapGet("/ready", async (IDbConnectionFactory database, CancellationToken cancellationToken) =>
+app.MapGet("/ready", async (DatabaseConnectionInfo database, CancellationToken cancellationToken) =>
 {
-    var failure = await DatabaseMigrator.WaitForDatabaseAsync(
+    var failure = await AtomFeedDatabase.Migrator.WaitForDatabaseAsync(
         database.Provider, database.ConnectionString, TimeSpan.Zero, cancellationToken);
     return failure is null
         ? Results.Ok(new { status = "ready" })
