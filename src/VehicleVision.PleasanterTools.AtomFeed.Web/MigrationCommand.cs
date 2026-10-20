@@ -40,7 +40,7 @@ public static class MigrationCommand
         if (wait > TimeSpan.Zero)
         {
             Console.WriteLine($"Waiting for the database (up to {wait.TotalSeconds:0}s)...");
-            var failure = await AtomFeedDatabase.Migrator
+            var failure = await AtomFeedDatabase.Instance.Migrator
                 .WaitForDatabaseAsync(provider, connectionString, wait, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -54,8 +54,8 @@ public static class MigrationCommand
         }
 
         // 複数台が同時に当てても 1 台だけが当て、残りは待つ（DB の排他ロック）。当て済みなら何もしない
-        await AtomFeedDatabase.Migrator.MigrateUpWithLockAsync(
-            provider, connectionString, AtomFeedDatabase.MigrationLockTimeout, cancellationToken: cancellationToken)
+        await AtomFeedDatabase.Instance.Migrator.MigrateUpWithLockAsync(
+            provider, connectionString, AppDatabase.DefaultMigrationLockTimeout, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         Console.WriteLine($"All migrations are applied ({provider}).");
         return 0;

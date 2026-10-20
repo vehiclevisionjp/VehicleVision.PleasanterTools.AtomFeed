@@ -114,11 +114,11 @@ public sealed class MultiInstanceTests : IDisposable
         await using (await AcquireLockAsync(provider, connectionString, TimeSpan.FromSeconds(5)))
         {
             await Assert.ThrowsAsync<TimeoutException>(
-                () => AtomFeedDatabase.Migrator.MigrateUpWithLockAsync(provider, connectionString, TimeSpan.FromSeconds(1)));
+                () => AtomFeedDatabase.Instance.Migrator.MigrateUpWithLockAsync(provider, connectionString, TimeSpan.FromSeconds(1)));
         }
 
         // 手放したら、当て終わっているので何も起きずに戻る
-        var result = await AtomFeedDatabase.Migrator.MigrateUpWithLockAsync(provider, connectionString, TimeSpan.FromSeconds(10));
+        var result = await AtomFeedDatabase.Instance.Migrator.MigrateUpWithLockAsync(provider, connectionString, TimeSpan.FromSeconds(10));
         Assert.Equal(0, result.AppliedCount);
     }
 
@@ -129,7 +129,7 @@ public sealed class MultiInstanceTests : IDisposable
         DatabaseMigrationLock.AcquireAsync(
             provider,
             connectionString,
-            AtomFeedDatabase.MigrationLockName,
+            AtomFeedDatabase.Instance.MigrationLockName,
             timeout,
             CancellationToken.None);
 }

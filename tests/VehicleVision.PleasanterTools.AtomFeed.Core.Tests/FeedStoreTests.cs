@@ -42,7 +42,7 @@ public static class TestDatabases
     {
         lock (MigrationLock)
         {
-            AtomFeedDatabase.Migrator.MigrateUp(provider, connectionString);
+            AtomFeedDatabase.Instance.Migrator.MigrateUp(provider, connectionString);
         }
     }
 
@@ -331,8 +331,8 @@ public sealed class FeedStoreTests : IDisposable
     {
         var connectionString = ConnectionStringFor(DatabaseProvider.Sqlite);
 
-        AtomFeedDatabase.Migrator.MigrateUp(DatabaseProvider.Sqlite, connectionString);
-        AtomFeedDatabase.Migrator.MigrateUp(DatabaseProvider.Sqlite, connectionString);
+        AtomFeedDatabase.Instance.Migrator.MigrateUp(DatabaseProvider.Sqlite, connectionString);
+        AtomFeedDatabase.Instance.Migrator.MigrateUp(DatabaseProvider.Sqlite, connectionString);
     }
 }
 
@@ -359,13 +359,13 @@ public sealed class SqlDialectTests
     [InlineData("SqlServer", DatabaseProvider.SqlServer)]
     [InlineData(" mysql ", DatabaseProvider.MySql)]
     public void providerを読む(string? value, DatabaseProvider expected) =>
-        Assert.Equal(expected, AtomFeedDatabase.ParseProvider(value));
+        Assert.Equal(expected, AtomFeedDatabase.Instance.ParseProvider(value, DatabaseProvider.Sqlite));
 
     [Theory]
     [InlineData("oracle")]
     [InlineData("99")]
     public void 読めないproviderは黙って落とさず止める(string value) =>
-        Assert.Throws<InvalidOperationException>(() => AtomFeedDatabase.ParseProvider(value));
+        Assert.Throws<InvalidOperationException>(() => AtomFeedDatabase.Instance.ParseProvider(value, DatabaseProvider.Sqlite));
 
     [Fact]
     public void SQL_Serverは暗号化を強制する()
@@ -380,5 +380,5 @@ public sealed class SqlDialectTests
     [Fact]
     public void SQLite以外は接続文字列が無ければ止める() =>
         Assert.Throws<InvalidOperationException>(() =>
-            AtomFeedDatabase.ResolveConnectionString(DatabaseProvider.PostgreSql, null, Path.GetTempPath()));
+            AtomFeedDatabase.Instance.ResolveConnectionString(DatabaseProvider.PostgreSql, null, Path.GetTempPath()));
 }
