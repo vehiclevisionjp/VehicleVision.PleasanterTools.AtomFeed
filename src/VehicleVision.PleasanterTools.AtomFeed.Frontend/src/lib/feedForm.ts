@@ -85,9 +85,9 @@ export function linesToFilters(text: string): Record<string, string> | null {
   const result: Record<string, string> = {};
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
-    if (line === '') continue;
+    if (line === '') {continue;}
     const at = line.indexOf('=');
-    if (at <= 0) return null;
+    if (at <= 0) {return null;}
     result[line.slice(0, at).trim()] = line.slice(at + 1).trim();
   }
 
@@ -102,14 +102,14 @@ const blankToNull = (v: string): string | null => (v.trim() === '' ? null : v.tr
  */
 /** 日数（0〜36500 の整数）を読む。無制限なら null。読めなければ undefined。 */
 function readDays(unlimited: boolean, text: string): number | null | undefined {
-  if (unlimited) return null;
+  if (unlimited) {return null;}
   const value = Number(text);
   return text.trim() !== '' && Number.isInteger(value) && value >= 0 && value <= 36500 ? value : undefined;
 }
 
 /** 件数（1〜100000 の整数）を読む。無制限なら null。読めなければ undefined。 */
 function readCount(unlimited: boolean, text: string): number | null | undefined {
-  if (unlimited) return null;
+  if (unlimited) {return null;}
   const value = Number(text);
   return text.trim() !== '' && Number.isInteger(value) && value >= 1 && value <= 100000 ? value : undefined;
 }

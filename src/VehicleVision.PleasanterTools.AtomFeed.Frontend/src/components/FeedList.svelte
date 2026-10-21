@@ -49,22 +49,22 @@
   function saved(feed: Feed, urls: FeedUrls | null): void {
     editor = null;
     flash = t('saved');
-    if (urls) shown = { title: t('feedCreatedTitle'), ...urls };
+    if (urls) {shown = { title: t('feedCreatedTitle'), ...urls };}
     void load();
     void feed;
   }
 
   async function run(): Promise<void> {
-    if (!confirm) return;
+    if (!confirm) {return;}
     busy = true;
     const { kind, feed } = confirm;
     if (kind === 'rotate') {
       const rotated = await api.rotateFeed(feed.id);
-      if (!rotated.ok) error = errorText(rotated);
-      else shown = { title: t('feedRotatedTitle'), url: rotated.value.url, rssUrl: rotated.value.rssUrl };
+      if (!rotated.ok) {error = errorText(rotated);}
+      else {shown = { title: t('feedRotatedTitle'), url: rotated.value.url, rssUrl: rotated.value.rssUrl };}
     } else {
       const revoked = await api.revokeFeed(feed.id);
-      if (!revoked.ok) error = errorText(revoked);
+      if (!revoked.ok) {error = errorText(revoked);}
     }
 
     busy = false;
@@ -81,7 +81,7 @@
 
   async function saveKey(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (!keyDialog) return;
+    if (!keyDialog) {return;}
     busy = true;
     const updated = await api.setFeedApiKey(keyDialog.id, keyValue, keyTz.trim() || null);
     busy = false;
@@ -98,7 +98,7 @@
   const statusClass = (s: FetchStatus): string => (s === 'Success' ? 'ok' : s === 'Transient' || s === 'RateLimited' ? 'warn' : 'bad');
   const statusText = (f: Feed): string => {
     const r = f.lastFetch;
-    if (!r) return '';
+    if (!r) {return '';}
     switch (r.status) {
       case 'Success':
         return t('fetchSuccess', { count: r.entryCount ?? 0 });
