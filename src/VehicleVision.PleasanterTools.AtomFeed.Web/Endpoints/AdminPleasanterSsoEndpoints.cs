@@ -2,6 +2,7 @@ using VehicleVision.PleasanterTools.AtomFeed.Localization;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Localization;
 using VehicleVision.PleasanterTools.AtomFeed.Admin;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
+using VehicleVision.PleasanterTools.Core.Web;
 
 namespace VehicleVision.PleasanterTools.AtomFeed.Web.Endpoints;
 
