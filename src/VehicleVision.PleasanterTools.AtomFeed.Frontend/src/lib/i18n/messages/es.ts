@@ -326,6 +326,7 @@ export const es: Record<MessageKey, string> = {
   accountTotpReenroll: 'Registrar de nuevo',
   accountTotpDisable: 'Desactivar la autenticación de dos factores',
   accountTotpDisableLead: 'Introduzca de nuevo su contraseña para desactivarla.',
+  accountTotpReenrollLead: 'Introduzca de nuevo su contraseña para volver a registrarla.',
   accountTotpRequiredNoDisable: 'En este entorno se requiere la autenticación de dos factores, por lo que no se puede desactivar.',
   accountTotpDisabledByPolicy: 'El registro de la autenticación de dos factores está deshabilitado en este entorno.',
   accountTotpOffDone: 'Se desactivó la autenticación de dos factores.',

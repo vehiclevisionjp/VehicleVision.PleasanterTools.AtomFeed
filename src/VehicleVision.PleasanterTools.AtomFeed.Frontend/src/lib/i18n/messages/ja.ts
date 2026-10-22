@@ -328,6 +328,7 @@ export const ja = {
   accountTotpReenroll: '登録し直す',
   accountTotpDisable: '2 要素認証を解除する',
   accountTotpDisableLead: '解除するには、パスワードをもう一度入力してください。',
+  accountTotpReenrollLead: '登録し直すには、パスワードをもう一度入力してください。',
   accountTotpRequiredNoDisable: 'この環境では 2 要素認証が必須のため、解除できません。',
   accountTotpDisabledByPolicy: 'この環境では 2 要素認証の登録が無効になっています。',
   accountTotpOffDone: '2 要素認証を解除しました。',
