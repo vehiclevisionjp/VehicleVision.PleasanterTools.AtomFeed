@@ -23,6 +23,11 @@ public static class AdminSessionGuard
     /// <summary>2 要素の途中の cookie。</summary>
     public const string PendingCookie = "atomfeed_admin_pending";
 
+    /// <summary>本人確認後の登録途中の cookie。ログインの途中には流用しない。</summary>
+    public const string ReenrollCookie = "atomfeed_admin_reenroll";
+
+    public const string ReenrollKind = "Reenroll";
+
     private const string CookiePath = "/admin";
 
     /// <summary>cookie を設定する。</summary>

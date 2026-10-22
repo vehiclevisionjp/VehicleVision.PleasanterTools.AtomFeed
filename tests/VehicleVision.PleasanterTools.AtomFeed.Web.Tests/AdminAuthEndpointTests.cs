@@ -269,6 +269,7 @@ public sealed class AdminAuthEndpointTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await PostAsync(replay, "/admin/api/login/totp", new { code = fresh })).StatusCode);
 
         var again = _app.Client();
+        again.DefaultRequestHeaders.Add(RemoteIpStartupFilter.Header, "192.0.2.20");
         await LoginAsync(again);
         Assert.Equal(HttpStatusCode.Unauthorized, (await PostAsync(again, "/admin/api/login/totp", new { code = fresh })).StatusCode);
     }
@@ -281,6 +282,7 @@ public sealed class AdminAuthEndpointTests : IDisposable
         var (secret, _) = await EnrollAsync(client);
 
         var attacker = _app.Client();
+        attacker.DefaultRequestHeaders.Add(RemoteIpStartupFilter.Header, "192.0.2.21");
         await LoginAsync(attacker);
         for (var i = 0; i < 5; i++)
         {
@@ -290,7 +292,7 @@ public sealed class AdminAuthEndpointTests : IDisposable
         // 締め出された後は、正しい数字でも通らない。途中のセッションも捨てられている
         _app.Time.Advance(TimeSpan.FromSeconds(30));
         var right = TotpService.Compute(secret, _app.Time.Now.UtcDateTime);
-        // （ログインの試行は別枠のレート制限があるため、回数はその範囲に収めている。ここは 10 回目）
+        // 登録の試行とは接続元を分け、IP の枠でなく利用者の締め出しを確かめる。
         Assert.Equal(HttpStatusCode.Unauthorized, (await PostAsync(attacker, "/admin/api/login/totp", new { code = right })).StatusCode);
     }
 
@@ -321,7 +323,7 @@ public sealed class AdminAuthEndpointTests : IDisposable
         var (_, oldCodes) = await EnrollAsync(client);
 
         // ログイン済みの端末から登録し直す
-        var begin = await (await client.PostAsync("/admin/api/me/totp/begin", null)).Content.ReadFromJsonAsync<JsonElement>();
+        var begin = await (await PostAsync(client, "/admin/api/me/totp/begin", new { password = Password })).Content.ReadFromJsonAsync<JsonElement>();
         var secret = begin.GetProperty("secret").GetString()!;
         _app.Time.Advance(TimeSpan.FromSeconds(30));
         var complete = await PostAsync(client, "/admin/api/me/totp/complete", new { code = TotpService.Compute(secret, _app.Time.Now.UtcDateTime) });
@@ -399,7 +401,7 @@ public sealed class AdminLostSecretKeyTests
             Assert.Equal(HttpStatusCode.OK, (await other.GetAsync("/admin/api/feeds/")).StatusCode);
 
             // 入れたら、2 要素を登録し直せる（古い共有鍵は復号できないまま、新しい鍵で上書きされる）
-            var begin = await (await other.PostAsync("/admin/api/me/totp/begin", null)).Content.ReadFromJsonAsync<JsonElement>();
+            var begin = await (await other.PostAsJsonAsync("/admin/api/me/totp/begin", new { password = TestApp.AdminPassword })).Content.ReadFromJsonAsync<JsonElement>();
             var done = await other.PostAsJsonAsync(
                 "/admin/api/me/totp/complete",
                 new { code = TotpService.Compute(begin.GetProperty("secret").GetString()!, after.Time.Now.UtcDateTime) });
@@ -523,6 +525,8 @@ public sealed class AdminTwoFactorRequiredTests : IDisposable
         Assert.Equal("totp", (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("step").GetString());
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await attacker.PostAsync("/admin/api/me/totp/begin", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await attacker.PostAsJsonAsync("/admin/api/me/totp/complete", new { code = "123456" })).StatusCode);
     }
 }
 
