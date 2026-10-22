@@ -303,7 +303,7 @@ public static class AppSettingDefinitions
     {
         try
         {
-            _ = Services.SamlOptions.FromValues(key => values.TryGetValue(key, out var v) ? v : null);
+            _ = AtomFeedAuthenticationSettings.ReadSaml(key => values.TryGetValue(key, out var v) ? v : null);
         }
         catch (SettingException ex)
         {
@@ -317,7 +317,7 @@ public static class AppSettingDefinitions
     {
         try
         {
-            _ = Services.PleasanterSsoOptions.FromValues(key => values.TryGetValue(key, out var v) ? v : null);
+            _ = AtomFeedAuthenticationSettings.ReadPleasanterSso(key => values.TryGetValue(key, out var v) ? v : null);
         }
         catch (SettingException ex)
         {

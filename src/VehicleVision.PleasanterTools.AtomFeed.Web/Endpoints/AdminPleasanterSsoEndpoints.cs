@@ -134,7 +134,7 @@ public static class AdminPleasanterSsoEndpoints
             PleasanterSsoOptions options;
             try
             {
-                options = PleasanterSsoOptions.FromValues(key => key == PleasanterSsoOptions.EnabledKey
+                options = AtomFeedAuthenticationSettings.ReadPleasanterSso(key => key == AtomFeedAuthenticationSettings.PleasanterSsoKeys.EnabledKey
                     ? "true"
                     : settings.Current.Snapshot.Values.TryGetValue(key, out var v) ? v : null);
             }
