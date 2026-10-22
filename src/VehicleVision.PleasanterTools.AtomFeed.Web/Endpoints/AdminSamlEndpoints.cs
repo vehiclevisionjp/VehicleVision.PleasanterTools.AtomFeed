@@ -10,6 +10,7 @@ using VehicleVision.PleasanterTools.AtomFeed.Security;
 using Microsoft.IdentityModel.Tokens.Saml2;
 using VehicleVision.PleasanterTools.AtomFeed.Admin;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
+using VehicleVision.PleasanterTools.Core.Web;
 
 namespace VehicleVision.PleasanterTools.AtomFeed.Web.Endpoints;
 
