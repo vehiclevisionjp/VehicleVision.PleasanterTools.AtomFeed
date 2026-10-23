@@ -151,10 +151,12 @@ if (string.IsNullOrEmpty(app.Configuration[ParameterFiles.FoundFilesKey]))
 var db = app.Services.GetRequiredService<DatabaseConnectionInfo>();
 app.Logger.LogInformation("DB: {Provider}", db.Provider);
 
-// **`--migrate` ならマイグレーションだけ当てて終わる**（AKS の起動前フック・自動適用を止めた導入先のため）
+// マイグレーションの適用・状態確認だけで終わる（AKS の起動前フック・自動適用を止めた導入先のため）
 if (MigrationCommand.IsRequested(args))
 {
-    Environment.ExitCode = await MigrationCommand.RunAsync(db.Provider, db.ConnectionString, args);
+    Environment.ExitCode = await MigrationCommand.RunAsync(
+        AtomFeedDatabase.Instance.Migrator, db.Provider, db.ConnectionString, args,
+        lockTimeout: AppDatabase.DefaultMigrationLockTimeout);
     return;
 }
 
