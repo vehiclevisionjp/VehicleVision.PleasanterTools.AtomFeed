@@ -17,6 +17,8 @@ public static partial class ServerMessages
         [ServerMessageKeys.TwoFactorDisabled] = "Xác thực hai yếu tố đã bị tắt.",
         [ServerMessageKeys.TwoFactorRequired] = "Xác thực hai yếu tố là bắt buộc nên không thể gỡ bỏ.",
         [ServerMessageKeys.EnrollmentBeginRequired] = "Hãy bắt đầu đăng ký trước (/admin/api/me/totp/begin).",
+        [ServerMessageKeys.EnrollmentRestartRequired] = "Hãy bắt đầu đăng ký lại từ đầu.",
+        [ServerMessageKeys.OperationTemporarilyLocked] = "Có quá nhiều lần thử. Tạm thời không thể thực hiện thao tác này. Vui lòng thử lại sau.",
         [ServerMessageKeys.TotpCodeMismatch] = "Mã không đúng. Hãy nhập mã 6 chữ số hiển thị trong ứng dụng xác thực của bạn.",
         [ServerMessageKeys.LoginIdInvalid] = "ID đăng nhập phải có từ 1 đến 100 ký tự (không có ký tự điều khiển).",
         [ServerMessageKeys.PasswordTooShort] = "Mật khẩu phải có ít nhất {0} ký tự.",

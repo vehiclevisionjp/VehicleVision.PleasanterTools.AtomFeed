@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using VehicleVision.PleasanterTools.AtomFeed.Localization;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Localization;
 using VehicleVision.PleasanterTools.AtomFeed.Admin;
@@ -74,7 +76,7 @@ public static class AdminAuthEndpoints
         group.MapPost("/logout", Logout);
 
         // 2 要素の登録は、ログイン済み、または「必須で未登録」の Pending から。フィルタを付けずに中で判断する
-        group.MapPost("/me/totp/begin", TotpBegin);
+        group.MapPost("/me/totp/begin", TotpBegin).RequireAdminLoginRateLimit();
         group.MapPost("/me/totp/complete", TotpComplete).RequireAdminLoginRateLimit();
 
         var me = group.MapGroup("/me").AddEndpointFilter<AdminSessionFilter>();
@@ -326,6 +328,7 @@ public static class AdminAuthEndpoints
         await DropExistingAsync(http, sessions, ct);
         AdminSessionGuard.ClearCookie(http, AdminSessionGuard.SessionCookie);
         AdminSessionGuard.ClearCookie(http, AdminSessionGuard.PendingCookie);
+        AdminSessionGuard.ClearCookie(http, AdminSessionGuard.ReenrollCookie);
         return Results.NoContent();
     }
 
@@ -399,11 +402,13 @@ public static class AdminAuthEndpoints
     // ---- 2 要素の登録・解除 ----------------------------------------------------------
 
     private static async Task<IResult> TotpBegin(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PasswordRequest? request,
         HttpContext http,
         IAdminUserStore users,
         IAdminSessionStore sessions,
         AdminAuthOptions options,
         TimeProvider time,
+        AuditLogService audit,
         CancellationToken ct)
     {
         // **無効では登録の口を閉じる**（画面から隠すだけでは、API を直接叩かれたときに通ってしまう）
@@ -417,8 +422,50 @@ public static class AdminAuthEndpoints
             return ApiError.Of(StatusCodes.Status401Unauthorized, ServerMessageKeys.LoginRequired);
         }
 
+        if (who.User.IsLocked(time.GetUtcNow()))
+        {
+            return ApiError.Of(StatusCodes.Status423Locked, ServerMessageKeys.OperationTemporarilyLocked);
+        }
+
+        if (who.User.TotpEnabled)
+        {
+            var password = request?.Password;
+            var found = await users.FindForLoginAsync(who.User.LoginId, ct);
+            if (found is null || string.IsNullOrEmpty(password)
+                || !PasswordHasher.Verify(password, found.Value.PasswordHash))
+            {
+                // Questionnaire と同じく、空の入力は拒否だけ、誤ったパスワードは締め出しに数える。
+                if (found is not null && !string.IsNullOrEmpty(password))
+                {
+                    var failure = await users.RecordFailureAsync(who.User.Id, options.LockoutThreshold, options.Lockout, ct);
+                    if (failure.LockedUntil is not null)
+                    {
+                        await audit.WriteAsync(http, AuditActions.LoginLocked, false, who.User);
+                    }
+                }
+
+                await audit.WriteAsync(http, AuditActions.TotpEnrollFailed, false, who.User, detail: "bad-current-password");
+                return ApiError.Of(StatusCodes.Status401Unauthorized, ServerMessageKeys.CurrentPasswordRejected);
+            }
+
+            if (PasswordHasher.NeedsRehash(found.Value.PasswordHash))
+            {
+                await users.SetPasswordHashAsync(who.User.Id, PasswordHasher.Hash(password), ct);
+            }
+        }
+
         var secret = TotpService.GenerateSecret();
         await users.SetTotpPendingAsync(who.User.Id, secret, ct);
+        if (who.Kind == AdminSessionKinds.Session)
+        {
+            await DropReenrollAsync(http, sessions, ct);
+            // cookie が届かない IdP 起点の単一ログアウトでも、同じ SSO 情報で登録途中を失効させる。
+            var reenroll = await sessions.CreateAsync(
+                who.User.Id, AdminSessionGuard.ReenrollKind, options.ReenrollLifetime, ct, Ip(http), UserAgentOf(http),
+                sso: await sessions.GetSsoAsync(who.SessionId, ct));
+            AdminSessionGuard.SetCookie(http, AdminSessionGuard.ReenrollCookie, reenroll, options.ReenrollLifetime);
+        }
+
         return Results.Ok(new { secret, uri = TotpService.BuildUri(options.Issuer, who.User.LoginId, secret) });
     }
 
@@ -443,9 +490,24 @@ public static class AdminAuthEndpoints
             return ApiError.Of(StatusCodes.Status401Unauthorized, ServerMessageKeys.LoginRequired);
         }
 
+        if (who.User.IsLocked(now))
+        {
+            return ApiError.Of(StatusCodes.Status423Locked, ServerMessageKeys.OperationTemporarilyLocked);
+        }
+
+        if (who.Kind == AdminSessionKinds.Session
+            && (!http.Request.Cookies.TryGetValue(AdminSessionGuard.ReenrollCookie, out var reenrollId)
+                || await sessions.FindAsync(reenrollId, ct) is not { Kind: AdminSessionGuard.ReenrollKind } reenroll
+                || reenroll.UserId != who.User.Id))
+        {
+            return BadKey(ServerMessageKeys.EnrollmentRestartRequired);
+        }
+
         if (await users.GetTotpPendingAsync(who.User.Id, ct) is not { } secret)
         {
-            return BadKey(ServerMessageKeys.EnrollmentBeginRequired);
+            return BadKey(who.Kind == AdminSessionKinds.Session
+                ? ServerMessageKeys.EnrollmentRestartRequired
+                : ServerMessageKeys.EnrollmentBeginRequired);
         }
 
         if (!TotpService.Verify(secret, request.Code ?? "", now.UtcDateTime, out var step))
@@ -467,6 +529,11 @@ public static class AdminAuthEndpoints
             await sessions.DeleteAsync(who.SessionId, ct);
             AdminSessionGuard.ClearCookie(http, AdminSessionGuard.PendingCookie);
             await StartSessionAsync(http, sessions, users, who.User, options, audit, ct, sso);
+        }
+        else
+        {
+            await DropReenrollAsync(http, sessions, ct);
+            await users.RecordSuccessAsync(who.User.Id, ct);
         }
 
         return Results.Ok(new { recoveryCodes = codes });
@@ -534,13 +601,23 @@ public static class AdminAuthEndpoints
     /// <summary>手元の cookie のセッション（ログイン済み・途中のどちらも）を、**サーバ側で**捨てる。cookie の扱いは呼び出し側が決める。</summary>
     private static async Task DropExistingAsync(HttpContext http, IAdminSessionStore sessions, CancellationToken ct)
     {
-        foreach (var name in new[] { AdminSessionGuard.SessionCookie, AdminSessionGuard.PendingCookie })
+        foreach (var name in new[] { AdminSessionGuard.SessionCookie, AdminSessionGuard.PendingCookie, AdminSessionGuard.ReenrollCookie })
         {
             if (http.Request.Cookies.TryGetValue(name, out var id) && !string.IsNullOrEmpty(id))
             {
                 await sessions.DeleteAsync(id, ct);
             }
         }
+    }
+
+    private static async Task DropReenrollAsync(HttpContext http, IAdminSessionStore sessions, CancellationToken ct)
+    {
+        if (http.Request.Cookies.TryGetValue(AdminSessionGuard.ReenrollCookie, out var id) && !string.IsNullOrEmpty(id))
+        {
+            await sessions.DeleteAsync(id, ct);
+        }
+
+        AdminSessionGuard.ClearCookie(http, AdminSessionGuard.ReenrollCookie);
     }
 
     /// <summary>2 要素の途中（Pending）のセッションと、その持ち主。</summary>

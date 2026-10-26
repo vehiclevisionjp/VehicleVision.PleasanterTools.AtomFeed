@@ -326,6 +326,7 @@ export const en: Record<MessageKey, string> = {
   accountTotpReenroll: 'Register again',
   accountTotpDisable: 'Turn off two-factor authentication',
   accountTotpDisableLead: 'Enter your password again to turn it off.',
+  accountTotpReenrollLead: 'Enter your password again to register it again.',
   accountTotpRequiredNoDisable: 'Two-factor authentication is required in this environment, so it cannot be turned off.',
   accountTotpDisabledByPolicy: 'Registering two-factor authentication is disabled in this environment.',
   accountTotpOffDone: 'Two-factor authentication was turned off.',

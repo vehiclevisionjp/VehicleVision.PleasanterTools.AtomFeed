@@ -326,6 +326,7 @@ export const ko: Record<MessageKey, string> = {
   accountTotpReenroll: '다시 등록',
   accountTotpDisable: '2단계 인증 끄기',
   accountTotpDisableLead: '끄려면 비밀번호를 다시 입력해 주세요.',
+  accountTotpReenrollLead: '다시 등록하려면 비밀번호를 다시 입력해 주세요.',
   accountTotpRequiredNoDisable: '이 환경에서는 2단계 인증이 필수이므로 끌 수 없습니다.',
   accountTotpDisabledByPolicy: '이 환경에서는 2단계 인증 등록이 비활성화되어 있습니다.',
   accountTotpOffDone: '2단계 인증을 껐습니다.',

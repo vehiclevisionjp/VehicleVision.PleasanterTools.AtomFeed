@@ -23,6 +23,11 @@ public static class AdminSessionGuard
     /// <summary>2 要素の途中の cookie。</summary>
     public const string PendingCookie = "atomfeed_admin_pending";
 
+    /// <summary>本人確認後の登録途中の cookie。ログインの途中には流用しない。</summary>
+    public const string ReenrollCookie = "atomfeed_admin_reenroll";
+
+    public const string ReenrollKind = "Reenroll";
+
     private const string CookiePath = "/admin";
 
     /// <summary>cookie を設定する。</summary>
@@ -112,16 +117,23 @@ public sealed class AdminSessionFilter(
         }
 
         // Pleasanter のログインで入ったセッションは、一定間隔で Pleasanter に確かめ直す（ログアウト・別人・所属の変更を、ここで受け止める）
-        switch (await revalidator.RevalidateAsync(http, sessionId, session, http.RequestAborted).ConfigureAwait(false))
+        var revalidation = await revalidator.RevalidateAsync(http, sessionId, session, http.RequestAborted).ConfigureAwait(false);
+        switch (revalidation)
         {
             case PleasanterSsoRevalidation.Rejected:
-                await sessions.DeleteAsync(sessionId, http.RequestAborted).ConfigureAwait(false);
-                AdminSessionGuard.ClearCookie(http, AdminSessionGuard.SessionCookie);
-                return ApiError.Of(StatusCodes.Status401Unauthorized, ServerMessageKeys.LoginRequired);
             case PleasanterSsoRevalidation.UpstreamError:
                 await sessions.DeleteAsync(sessionId, http.RequestAborted).ConfigureAwait(false);
+                if (http.Request.Cookies.TryGetValue(AdminSessionGuard.ReenrollCookie, out var reenrollId)
+                    && !string.IsNullOrEmpty(reenrollId))
+                {
+                    await sessions.DeleteAsync(reenrollId, http.RequestAborted).ConfigureAwait(false);
+                }
+
                 AdminSessionGuard.ClearCookie(http, AdminSessionGuard.SessionCookie);
-                return ApiError.Of(StatusCodes.Status503ServiceUnavailable, ServerMessageKeys.UpstreamSessionEnded);
+                AdminSessionGuard.ClearCookie(http, AdminSessionGuard.ReenrollCookie);
+                return revalidation == PleasanterSsoRevalidation.Rejected
+                    ? ApiError.Of(StatusCodes.Status401Unauthorized, ServerMessageKeys.LoginRequired)
+                    : ApiError.Of(StatusCodes.Status503ServiceUnavailable, ServerMessageKeys.UpstreamSessionEnded);
         }
 
         http.Items[AdminContext.ItemKey] = new AdminContext(user, sessionId, AdminSessionKinds.Session);
