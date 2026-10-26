@@ -456,6 +456,29 @@ public sealed class SamlTests : IDisposable
 
     // ---- 単一ログアウト -----------------------------------------------------------------
 
+    private async Task<string> BeginReenrollAsync(HttpClient client, Jar jar)
+    {
+        var begin = await client.SendAsync(jar.Request(HttpMethod.Post, "/admin/api/me/totp/begin",
+            JsonContent.Create(new { password = TestApp.AdminPassword })));
+        Assert.Equal(HttpStatusCode.OK, begin.StatusCode);
+        jar.Absorb(begin);
+        return jar.Cookies[AdminSessionGuard.ReenrollCookie];
+    }
+
+    private async Task AssertReenrollRejectedAsync(HttpClient client, string reenrollId)
+    {
+        var sessions = _app.Service<IAdminSessionStore>();
+        var userId = (await _app.Service<IAdminUserStore>().FindForLoginAsync(TestApp.AdminLoginId))!.Value.User.Id;
+        var secret = (await _app.Service<IAdminUserStore>().GetTotpPendingAsync(userId))!;
+        var replay = new Jar();
+        replay.Cookies[AdminSessionGuard.SessionCookie] =
+            await sessions.CreateAsync(userId, AdminSessionKinds.Session, TimeSpan.FromHours(8));
+        replay.Cookies[AdminSessionGuard.ReenrollCookie] = reenrollId;
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.SendAsync(replay.Request(HttpMethod.Post, "/admin/api/me/totp/complete",
+                JsonContent.Create(new { code = TotpService.Compute(secret, _app.Time.Now.UtcDateTime) })))).StatusCode);
+    }
+
     [Fact]
     public async Task 自分からのログアウトは_セッションを捨て_単一ログアウトが有効ならIdPへ頼む()
     {
@@ -464,15 +487,21 @@ public sealed class SamlTests : IDisposable
         var (jar, requestId, _) = await StartAsync(client);
         jar.Absorb(await PostAcsAsync(client, jar, _idp.Response(requestId, TestApp.AdminLoginId)));
         Assert.Equal(HttpStatusCode.OK, await MeStatusAsync(client, jar));
+        var sessionId = jar.Cookies[AdminSessionGuard.SessionCookie];
+        var reenrollId = await BeginReenrollAsync(client, jar);
 
         var logout = await client.SendAsync(jar.Request(HttpMethod.Get, "/admin/api/saml/logout"));
         jar.Absorb(logout);
 
+        Assert.Equal(HttpStatusCode.Redirect, logout.StatusCode);
         Assert.StartsWith(FakeIdp.SingleLogoutUrl, LocationOf(logout));
         Assert.Contains("SAMLRequest=", LocationOf(logout));
-        var stale = new Jar();
-        stale.Cookies[AdminSessionGuard.SessionCookie] = "x";
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(sessionId));
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(reenrollId));
+        Assert.False(jar.Cookies.ContainsKey(AdminSessionGuard.SessionCookie));
+        Assert.False(jar.Cookies.ContainsKey(AdminSessionGuard.ReenrollCookie));
         Assert.Equal(HttpStatusCode.Unauthorized, await MeStatusAsync(client, jar));
+        await AssertReenrollRejectedAsync(client, reenrollId);
     }
 
     [Fact]
@@ -482,12 +511,71 @@ public sealed class SamlTests : IDisposable
         var client = _app.RawClient();
         var (jar, requestId, _) = await StartAsync(client);
         jar.Absorb(await PostAcsAsync(client, jar, _idp.Response(requestId, TestApp.AdminLoginId)));
+        var sessionId = jar.Cookies[AdminSessionGuard.SessionCookie];
+        var reenrollId = await BeginReenrollAsync(client, jar);
 
         var logout = await client.SendAsync(jar.Request(HttpMethod.Get, "/admin/api/saml/logout"));
         jar.Absorb(logout);
 
+        Assert.Equal(HttpStatusCode.Redirect, logout.StatusCode);
         Assert.Equal("/admin/", LocationOf(logout));
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(sessionId));
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(reenrollId));
+        Assert.False(jar.Cookies.ContainsKey(AdminSessionGuard.SessionCookie));
+        Assert.False(jar.Cookies.ContainsKey(AdminSessionGuard.ReenrollCookie));
         Assert.Equal(HttpStatusCode.Unauthorized, await MeStatusAsync(client, jar));
+        await AssertReenrollRejectedAsync(client, reenrollId);
+    }
+
+    [Theory]
+    [InlineData("s-1")]
+    [InlineData(null)]
+    public async Task IdPからの単一ログアウトは_cookieなしでも対応する登録途中を失効させる(string? sessionIndex)
+    {
+        await EnableAsync(new() { [Prefix + "SINGLELOGOUTURL"] = FakeIdp.SingleLogoutUrl });
+        var client = _app.RawClient();
+        var (first, id1, _) = await StartAsync(client);
+        first.Absorb(await PostAcsAsync(client, first, _idp.Response(id1, TestApp.AdminLoginId, sessionIndex: "s-1")));
+        var firstReenroll = await BeginReenrollAsync(client, first);
+        var (second, id2, _) = await StartAsync(client);
+        second.Absorb(await PostAcsAsync(client, second, _idp.Response(id2, TestApp.AdminLoginId, sessionIndex: "s-2")));
+        var secondReenroll = await BeginReenrollAsync(client, second);
+        var sessions = _app.Service<IAdminSessionStore>();
+
+        using var other = new FakeIdp("CN=other-idp");
+        var rejected = await client.PostAsync("/admin/api/saml/slo",
+            Form(FormOf("SAMLRequest", other.LogoutRequest(TestApp.AdminLoginId, sessionIndex))));
+        Assert.Equal(HttpStatusCode.Redirect, rejected.StatusCode);
+        Assert.Equal("/admin/", LocationOf(rejected));
+        Assert.NotNull(await sessions.FindAsync(first.Cookies[AdminSessionGuard.SessionCookie]));
+        Assert.NotNull(await sessions.FindAsync(second.Cookies[AdminSessionGuard.SessionCookie]));
+        Assert.NotNull(await sessions.FindAsync(firstReenroll));
+        Assert.NotNull(await sessions.FindAsync(secondReenroll));
+
+        var response = await client.PostAsync("/admin/api/saml/slo",
+            Form(FormOf("SAMLRequest", _idp.LogoutRequest(TestApp.AdminLoginId, sessionIndex))));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.StartsWith(FakeIdp.SingleLogoutUrl, LocationOf(response));
+        Assert.Contains("SAMLResponse=", LocationOf(response));
+        Assert.Null(await sessions.FindAsync(first.Cookies[AdminSessionGuard.SessionCookie]));
+        Assert.Null(await sessions.FindAsync(firstReenroll));
+        if (sessionIndex is null)
+        {
+            Assert.Null(await sessions.FindAsync(second.Cookies[AdminSessionGuard.SessionCookie]));
+            Assert.Null(await sessions.FindAsync(secondReenroll));
+        }
+        else
+        {
+            Assert.NotNull(await sessions.FindAsync(second.Cookies[AdminSessionGuard.SessionCookie]));
+            Assert.NotNull(await sessions.FindAsync(secondReenroll));
+        }
+
+        await AssertReenrollRejectedAsync(client, firstReenroll);
+        if (sessionIndex is null)
+        {
+            await AssertReenrollRejectedAsync(client, secondReenroll);
+        }
     }
 
     [Fact]

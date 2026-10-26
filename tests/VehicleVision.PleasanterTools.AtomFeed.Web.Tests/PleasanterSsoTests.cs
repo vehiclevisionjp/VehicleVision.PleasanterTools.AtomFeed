@@ -195,6 +195,89 @@ public sealed class PleasanterSsoTests : IDisposable
     }
 
     [Fact]
+    public async Task Pleasanterで入った人も共通ログアウトで登録途中を失効させる()
+    {
+        await EnableAsync(new() { [Prefix + "LOGOUTURL"] = "/users/logout" });
+        Pleasanter.Login("c1", new FakePleasanterSso.User(1, 10, TestApp.AdminLoginId, "管理"));
+        var browser = NewBrowser().WithPleasanterCookie("c1");
+        Assert.Equal(HttpStatusCode.OK, (await browser.CheckAsync()).StatusCode);
+        var sessionId = browser.Cookies[AdminSessionGuard.SessionCookie];
+        var reenrollId = await BeginReenrollAsync(browser);
+        Assert.Equal(await _app.Service<IAdminSessionStore>().GetSsoAsync(sessionId),
+            await _app.Service<IAdminSessionStore>().GetSsoAsync(reenrollId));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.SendAsync(HttpMethod.Post, "/admin/api/logout")).StatusCode);
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(sessionId));
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(reenrollId));
+        Assert.False(browser.Cookies.ContainsKey(AdminSessionGuard.SessionCookie));
+        Assert.False(browser.Cookies.ContainsKey(AdminSessionGuard.ReenrollCookie));
+        Assert.Equal(HttpStatusCode.Unauthorized, await browser.MeAsync());
+        await AssertReenrollRejectedAsync(reenrollId);
+    }
+
+    private static async Task<string> BeginReenrollAsync(Browser browser)
+    {
+        Assert.Equal(HttpStatusCode.OK, (await browser.SendAsync(HttpMethod.Post, "/admin/api/me/totp/begin",
+            new { password = TestApp.AdminPassword })).StatusCode);
+        return browser.Cookies[AdminSessionGuard.ReenrollCookie];
+    }
+
+    private async Task AssertReenrollRejectedAsync(string reenrollId)
+    {
+        var userId = (await _app.Service<IAdminUserStore>().FindForLoginAsync(TestApp.AdminLoginId))!.Value.User.Id;
+        var secret = (await _app.Service<IAdminUserStore>().GetTotpPendingAsync(userId))!;
+        var replay = NewBrowser();
+        replay.Cookies[AdminSessionGuard.SessionCookie] = await _app.Service<IAdminSessionStore>()
+            .CreateAsync(userId, AdminSessionKinds.Session, TimeSpan.FromHours(8));
+        replay.Cookies[AdminSessionGuard.ReenrollCookie] = reenrollId;
+        Assert.Equal(HttpStatusCode.BadRequest, (await replay.SendAsync(HttpMethod.Post, "/admin/api/me/totp/complete",
+            new { code = TotpService.Compute(secret, _app.Time.Now.UtcDateTime) })).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("logout", HttpStatusCode.Unauthorized)]
+    [InlineData("different-user", HttpStatusCode.Unauthorized)]
+    [InlineData("disabled", HttpStatusCode.Unauthorized)]
+    [InlineData("upstream-error", HttpStatusCode.ServiceUnavailable)]
+    public async Task Pleasanterの再検証で落ちたら期限前の登録途中も失効し_再利用できない(string reason, HttpStatusCode expected)
+    {
+        await EnableAsync(new() { [Prefix + "REVALIDATEMINUTES"] = "1" });
+        Pleasanter.Login("c1", new FakePleasanterSso.User(1, 10, TestApp.AdminLoginId, "管理"));
+        var browser = NewBrowser().WithPleasanterCookie("c1");
+        Assert.Equal(HttpStatusCode.OK, (await browser.CheckAsync()).StatusCode);
+        var sessionId = browser.Cookies[AdminSessionGuard.SessionCookie];
+        var reenrollId = await BeginReenrollAsync(browser);
+        switch (reason)
+        {
+            case "logout":
+                Pleasanter.Sessions.Clear();
+                break;
+            case "different-user":
+                Pleasanter.Login("c1", new FakePleasanterSso.User(1, 99, TestApp.AdminLoginId, "別人"));
+                break;
+            case "disabled":
+                await EnableAsync(new() { [Prefix + "ENABLED"] = "false" });
+                break;
+            case "upstream-error":
+                Pleasanter.Fail = HttpStatusCode.BadGateway;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(reason));
+        }
+
+        _app.Time.Advance(TimeSpan.FromMinutes(1));
+        Assert.NotNull(await _app.Service<IAdminSessionStore>().FindAsync(reenrollId));
+
+        Assert.Equal(expected, await browser.MeAsync());
+
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(sessionId));
+        Assert.Null(await _app.Service<IAdminSessionStore>().FindAsync(reenrollId));
+        Assert.False(browser.Cookies.ContainsKey(AdminSessionGuard.SessionCookie));
+        Assert.False(browser.Cookies.ContainsKey(AdminSessionGuard.ReenrollCookie));
+        await AssertReenrollRejectedAsync(reenrollId);
+    }
+
+    [Fact]
     public async Task 転送するのは設定した名前の_cookie_だけ_本アプリのセッションと_API_キーは送らない()
     {
         await EnableAsync(new() { [Prefix + "COOKIENAMES"] = ".AspNetCore.Cookies" });
