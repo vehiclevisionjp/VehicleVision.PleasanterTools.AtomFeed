@@ -459,8 +459,10 @@ public static class AdminAuthEndpoints
         if (who.Kind == AdminSessionKinds.Session)
         {
             await DropReenrollAsync(http, sessions, ct);
+            // cookie が届かない IdP 起点の単一ログアウトでも、同じ SSO 情報で登録途中を失効させる。
             var reenroll = await sessions.CreateAsync(
-                who.User.Id, AdminSessionGuard.ReenrollKind, options.ReenrollLifetime, ct, Ip(http), UserAgentOf(http));
+                who.User.Id, AdminSessionGuard.ReenrollKind, options.ReenrollLifetime, ct, Ip(http), UserAgentOf(http),
+                sso: await sessions.GetSsoAsync(who.SessionId, ct));
             AdminSessionGuard.SetCookie(http, AdminSessionGuard.ReenrollCookie, reenroll, options.ReenrollLifetime);
         }
 
