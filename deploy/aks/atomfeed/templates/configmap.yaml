@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "atomfeed.fullname" . }}
+  labels:
+    {{- include "atomfeed.labels" . | nindent 4 }}
+data:
+  ASPNETCORE_ENVIRONMENT: Production
+  ASPNETCORE_URLS: http://+:8080
+  ATOMFEED_DB_PROVIDER: {{ .Values.config.dbProvider | quote }}
+  ATOMFEED_PLEASANTER_BASEURL: {{ .Values.config.pleasanterUrl | quote }}
+  ATOMFEED_PLEASANTER_TIMEZONE: {{ .Values.config.timezone | quote }}
+  ATOMFEED_FORWARDED_PROXY_NETWORKS: {{ join "," .Values.config.forwardedNetworks | quote }}
+  TZ: {{ .Values.config.timezone | quote }}
+  {{- /* 書いた項目だけ渡す。空文字でも渡すと管理画面から変えられなくなるため、空と null は渡さない。 */}}
+  {{- range $key, $value := .Values.config.pleasanterSso }}
+  {{- if and (not (kindIs "invalid" $value)) (ne (toString $value) "") }}
+  {{- /* 数値は YAML から float64 で来るため、指数表記にならないよう整数に戻す。 */}}
+  {{ printf "ATOMFEED_PLEASANTERSSO_%s" (upper $key) }}: {{ ternary (int64 $value | toString) (toString $value) (kindIs "float64" $value) | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if not (kindIs "invalid" .Values.migration.autoMigrateOnStartup) }}
+  ATOMFEED_DB_AUTOMIGRATE: {{ toString .Values.migration.autoMigrateOnStartup | quote }}
+  {{- end }}

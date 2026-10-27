@@ -34,6 +34,7 @@ dotnet run --project src/VehicleVision.PleasanterTools.AtomFeed.Web
 ```bash
 # 秘密の鍵を作って設定する（フィードごとの Pleasanter API キーと管理者の TOTP を DB へ暗号化して置く鍵。失うと復号できない）
 export ATOMFEED_SECRET_KEY=$(dotnet run --project src/VehicleVision.PleasanterTools.AtomFeed.Web -- --generate-secret-key)
+# 設定しなければ、初回の起動で作って App_Data/Parameters/Security.local.json へ保存する（本番では環境変数へ移す）
 ```
 
 **最初の管理者**は、管理者が 1 人も居ないときだけ作れる（**公開する前に作る**。空の状態を放置しない）。
@@ -62,7 +63,8 @@ curl -b jar -X POST $B/admin/api/feeds -H "Content-Type: application/json" \
 | `POST /admin/api/logout` | — | ログアウト（サーバ側のセッションを失効） |
 | `GET /admin/api/me/` | ログイン済み | 自分の情報 |
 | `POST /admin/api/me/password` | ログイン済み | パスワードの変更（他の端末のセッションを失効） |
-| `POST /admin/api/me/totp/begin` → `/complete` | ログイン済み、または必須で未登録の途中 | 2 要素の登録（復旧コード 10 本を 1 度だけ返す） |
+| `POST /admin/api/me/totp/begin` | ログイン済み、または必須で未登録の途中 | 登録開始。登録済みは `{"password":"…"}` で本人確認。ログイン用レート制限 |
+| `POST /admin/api/me/totp/complete` | ログイン済み＋同一人物の Reenroll、または必須で未登録の Pending | `{"code":"123456"}` で確定。復旧コード 10 本を 1 度だけ返し、Reenroll は失効 |
 | `POST /admin/api/me/totp/disable` | ログイン済み | 2 要素の解除（パスワードの再確認つき。必須では不可） |
 | `GET /admin/api/feeds/` | ログイン済み | フィードの一覧（トークンも API キーも含まない） |
 | `POST /admin/api/feeds` | ログイン済み | フィードの作成 |
@@ -79,6 +81,10 @@ curl -b jar -X POST $B/admin/api/feeds -H "Content-Type: application/json" \
 
 管理画面は `/admin/`（ブラウザ）。上の API は管理画面が使うもので、cookie ＋ 状態を変える要求は同じサイトからのものだけ受ける。
 
+2 要素の再登録はパスワードの再確認が必要。誤りは 401、締め出し中は 423、IP の回数制限は 429。
+初回登録の経路は変更しない。詳しくは
+[`導入-更新運用手順書` 4.5](_documents/導入-更新運用手順書.md#45-ログインして-2-要素を登録する)。
+
 ## 対応する RDBMS
 
 本アプリ専用の DB（フィード定義）は **SQLite / SQL Server / PostgreSQL / MySQL**。**Pleasanter の DB とは別に作る。**
@@ -88,7 +94,6 @@ curl -b jar -X POST $B/admin/api/feeds -H "Content-Type: application/json" \
 ## 開発
 
 ```bash
-git submodule update --init --recursive   # _reference（Pleasanter 本体・参照専用）
 dotnet build
 dotnet test
 
@@ -97,7 +102,11 @@ cd src/VehicleVision.PleasanterTools.AtomFeed.Frontend
 npm ci && npm test && npm run build
 ```
 
-管理画面の画面の写しは未撮影（[`tools/screenshots`](tools/screenshots/README.md) で撮れる）。
+Pleasanter 本体のソースはビルド・テストには不要です。
+AI が事実確認するときだけ、[参照ソースの取得手順](_reference/README.md)に従って取得します。
+
+管理画面の画面の写しは
+[`_documents/管理画面-画面の写し一覧.md`](_documents/管理画面-画面の写し一覧.md)（[`tools/screenshots`](tools/screenshots/README.md) で撮り直せる）。
 
 **実機（Pleasanter・Keycloak）での通し**は CI の「端から端まで通す試験」（`.github/workflows/e2e.yml`）で回す。手元でも
 `tools/pleasanter-testenv/sso_roundtrip.py`（Pleasanter のログイン）・`tools/saml-idp/e2e.py`（SAML）で通せる。
@@ -130,4 +139,4 @@ npm ci && npm test && npm run build
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 貢献のしかた |
 | [`.github/cla/signed.yml`](.github/cla/signed.yml)・[`.github/workflows/cla-check.yml`](.github/workflows/cla-check.yml) | CLA の署名の一覧と、PR の自動チェック（`CLA` のチェック） |
 
-Copyright (C) PMC Co.,Ltd.
+Copyright (C) 株式会社ピー・エム・シー ITソリューション事業部

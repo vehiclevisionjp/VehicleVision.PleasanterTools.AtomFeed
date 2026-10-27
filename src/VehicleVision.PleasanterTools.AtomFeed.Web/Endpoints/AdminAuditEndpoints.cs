@@ -1,0 +1,60 @@
+using VehicleVision.PleasanterTools.AtomFeed.Localization;
+using VehicleVision.PleasanterTools.AtomFeed.Web.Localization;
+using System.Globalization;
+using VehicleVision.PleasanterTools.AtomFeed.Admin;
+using VehicleVision.PleasanterTools.AtomFeed.Data;
+using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
+
+namespace VehicleVision.PleasanterTools.AtomFeed.Web.Endpoints;
+
+/// <summary>監査ログの閲覧 API。**ログイン済みで <c>audit.read</c> を持つ役割だけ**が読める。</summary>
+public static class AdminAuditEndpoints
+{
+    /// <summary>監査ログの閲覧 API を登録する。</summary>
+    public static void MapAdminAudit(this WebApplication app)
+    {
+        var group = app.MapGroup("/admin/api/audit-logs");
+        group.AddEndpointFilter<AdminSessionFilter>();
+        group.AddEndpointFilter(RequirePermissionFilter.Of(AdminPermissions.AuditRead));
+
+        // 新しい順。ページ送りは、前のページまでに読んだ件数を offset へ渡す（時刻で区切ると、同じ秒の記録を取りこぼす）
+        group.MapGet("/", async (
+            IAuditLogStore store,
+            int? limit,
+            int? offset,
+            string? admin,
+            string? action,
+            bool? failed,
+            CancellationToken ct) =>
+        {
+            if (offset is < 0)
+            {
+                return ApiError.Of(StatusCodes.Status400BadRequest, ServerMessageKeys.AuditOffsetInvalid);
+            }
+
+            var entries = await store.ListAsync(
+                new AuditLogQuery
+                {
+                    Limit = limit ?? 100,
+                    Offset = offset ?? 0,
+                    ActorKey = admin,
+                    Action = action,
+                    FailedOnly = failed ?? false,
+                },
+                ct);
+
+            return Results.Ok(entries.Select(e => new
+            {
+                occurredAt = e.OccurredAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture),
+                e.Action,
+                succeeded = e.Succeeded,
+                adminUserId = e.ActorKey,
+                loginId = e.ActorLoginId,
+                e.TargetType,
+                e.TargetId,
+                detail = e.DetailJson,
+                e.IpAddress,
+            }));
+        });
+    }
+}

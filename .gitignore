@@ -24,6 +24,9 @@ TestResults/
 ## 一時成果物: temp/{yyyyMMdd}_{内容}/
 temp/
 
+## AI の事実確認専用（取得したソースは追跡しない）
+_reference/Implem.Pleasanter/
+
 .claude/settings.local.json
 
 ## Parameters のローカル上書き（実値。コミットしない）
