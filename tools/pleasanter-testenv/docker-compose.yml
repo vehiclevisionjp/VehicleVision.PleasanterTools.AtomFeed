@@ -58,7 +58,7 @@ services:
     restart: "no"
 
   pleasanter:
-    # サブモジュール _reference/Implem.Pleasanter の固定位置（Pleasanter_1.5.8.1）に合わせる
+    # 実機検証用の固定版。AI の参照用 main とは独立して維持する
     image: implem/pleasanter:1.5.8.1
     depends_on:
       codedefiner:
