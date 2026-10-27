@@ -7,6 +7,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+bash scripts/reference-isolation-check.sh
+
 fail=0
 
 echo "== src / tests に Implem.* への参照や using が無いか =="
