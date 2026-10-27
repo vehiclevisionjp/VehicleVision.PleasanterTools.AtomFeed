@@ -94,7 +94,6 @@ curl -b jar -X POST $B/admin/api/feeds -H "Content-Type: application/json" \
 ## 開発
 
 ```bash
-git submodule update --init --recursive   # _reference（Pleasanter 本体・参照専用）
 dotnet build
 dotnet test
 
@@ -102,6 +101,9 @@ dotnet test
 cd src/VehicleVision.PleasanterTools.AtomFeed.Frontend
 npm ci && npm test && npm run build
 ```
+
+Pleasanter 本体のソースはビルド・テストには不要です。
+AI が事実確認するときだけ、[参照ソースの取得手順](_reference/README.md)に従って取得します。
 
 管理画面の画面の写しは
 [`_documents/管理画面-画面の写し一覧.md`](_documents/管理画面-画面の写し一覧.md)（[`tools/screenshots`](tools/screenshots/README.md) で撮り直せる）。
