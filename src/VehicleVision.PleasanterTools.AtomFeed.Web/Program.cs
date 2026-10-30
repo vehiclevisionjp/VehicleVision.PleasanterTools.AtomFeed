@@ -7,6 +7,7 @@ using Microsoft.Extensions.Caching.Memory;
 using VehicleVision.PleasanterTools.AtomFeed.Data;
 using VehicleVision.PleasanterTools.Core.Mail;
 using VehicleVision.PleasanterTools.Core.Web;
+using SecretProtector = VehicleVision.PleasanterTools.AtomFeed.Security.SecretProtector;
 using VehicleVision.PleasanterTools.AtomFeed.Feeds;
 using VehicleVision.PleasanterTools.AtomFeed.Pleasanter;
 using VehicleVision.PleasanterTools.AtomFeed.Security;

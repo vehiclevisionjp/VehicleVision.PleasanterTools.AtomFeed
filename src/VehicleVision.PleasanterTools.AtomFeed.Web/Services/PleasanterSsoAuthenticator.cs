@@ -1,6 +1,7 @@
 using VehicleVision.PleasanterTools.AtomFeed.Admin;
 using VehicleVision.PleasanterTools.AtomFeed.Security;
 using VehicleVision.PleasanterTools.Core.Web;
+using PasswordHasher = VehicleVision.PleasanterTools.AtomFeed.Security.PasswordHasher;
 
 namespace VehicleVision.PleasanterTools.AtomFeed.Web.Services;
 
