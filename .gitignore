@@ -38,3 +38,6 @@ _reference/Implem.Pleasanter/
 ## 管理画面（Svelte）。組み立て成果物は .Web の wwwroot/admin へ出る（コミットしない。CI・配布時に npm run build）
 **/node_modules/
 src/*.Web/wwwroot/admin/
+
+## git worktree の作業ツリー置き場（ブランチ運用方針.md）
+.worktrees/
