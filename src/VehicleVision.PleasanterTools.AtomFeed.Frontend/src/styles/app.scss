@@ -9,6 +9,15 @@
 //   - 既定はライト。OS の prefers-color-scheme には従わない（ダークの切り替えは持たない。colors-explicit.css の
 //     ダークは、<html data-theme="dark"> を付けたときだけ効く）
 
+// コード・数値・ログの書体（DesignReference「コードでの指定(CSS)」）。Myrica M で日本語の幅を詰めず、
+// 半角:全角 = 1:2 を保つ（桁・字幅がそろう）
+@mixin code-text($family: var(--font-code)) {
+  font-family: $family;
+  font-feature-settings: 'palt' 0;
+  font-kerning: none;
+  text-spacing-trim: space-all;
+}
+
 // アイコンの下地（同梱した Material Icons）。中身はアイコンの名前（リガチャで字形へ置き換わる）。
 // **意味は文字でも書くこと**（アイコンだけの釦は読み上げで何も伝わらない）。**aria-hidden="true" を必ず付ける**
 .material-icons {
@@ -30,7 +39,7 @@
 
 code,
 .mono {
-  font-family: var(--font-code);
+  @include code-text;
 }
 
 .muted {
@@ -226,7 +235,7 @@ textarea:focus-visible {
 textarea {
   min-height: 96px;
   resize: vertical;
-  font-family: var(--font-code);
+  @include code-text;
   font-size: var(--fs-sm);
 }
 
@@ -504,7 +513,7 @@ td > .badge:not(:first-child) {
 
 td.num {
   text-align: right;
-  font-family: var(--font-mono);
+  @include code-text(var(--font-mono));
   font-variant-numeric: tabular-nums;
 }
 
@@ -562,7 +571,7 @@ td.num {
 }
 
 .copy-row input {
-  font-family: var(--font-code);
+  @include code-text;
   font-size: var(--fs-sm);
 }
 
@@ -576,7 +585,7 @@ td.num {
 }
 
 .codes li {
-  font-family: var(--font-code);
+  @include code-text;
   background: var(--color-bg);
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-sm);
