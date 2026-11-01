@@ -84,8 +84,18 @@ SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
   sass 1.105.2 / MIT / https://github.com/sass/dart-sass
   qrcode 1.5.4 / MIT / https://github.com/soldair/node-qrcode
 
-  アイコン（アプリへ同梱する。コードではなくフォントのファイル。文字の書体は、DesignReference の決まりに従い同梱しない）。**SIL Open Font License 1.1**
+  書体とアイコン（アプリへ同梱する。コードではなくフォントのファイル）。**SIL Open Font License 1.1**
   （寛容ライセンスの一覧にはないが、フォントの再配布を許す。ソフトウェアとして単独で売らない限り同梱・再配布してよい。商用利用可）
+  Noto Sans CJK JP 2.004 / SIL Open Font License 1.1 / https://github.com/notofonts/noto-cjk
+  Noto Sans Mono CJK JP 2.004 / SIL Open Font License 1.1 / https://github.com/notofonts/noto-cjk
+    （© 2014-2021 Adobe。文字を絞って woff2 にしたものを、VehicleVision.DesignReference 2.2（73943fd）から複写して同梱する）
+  Myrica M 2.012.20180119 / SIL Open Font License 1.1 + M+ FONTS / https://myrica.estable.jp/
+    （© 2006-2012 Raph Levien（Inconsolata）、© 2013 M+ FONTS PROJECT、© 2013 itouhiro（Migu）、© 2014 MM（GenShinGothic）、© 2014 Adobe（Noto Sans JP）。
+      文字を絞って woff2 にしたものを、同じく DesignReference 2.2 から複写して同梱する）
+    （書体のライセンス全文: リポジトリの Frontend/public/licenses/。配布物では wwwroot/admin/licenses/。
+      複写の出どころ（版・SHA）: Frontend/src/styles/designreference/fonts/SOURCE.json。
+      書体の設計は変えていない（形式の変換と文字の絞り込みのみ。名前テーブルの著作権・ライセンスの記録は残してある）。
+      書体を単独で売らない）
   @fontsource/material-icons 5.3.0 / SIL Open Font License 1.1 / https://www.npmjs.com/package/@fontsource/material-icons
     （Material Icons。上流（google/material-design-icons）は Apache-2.0 だが、npm パッケージは OFL-1.1 を宣言している）
     （2 要素の登録の QR コードをブラウザの中で描く）
