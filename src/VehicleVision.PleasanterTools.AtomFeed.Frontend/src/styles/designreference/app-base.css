@@ -1,4 +1,4 @@
-/* 出どころ: vehiclevisionjp/VehicleVision.DesignReference css/app-base.css(第 2.3 版・080f9b395ebcda2d4bc3c4108347421db2a2923a・2026-11-01 参照)。手で直さない。更新は DesignReference 側で行い、ここへ写し直す */
+/* 出どころ: vehiclevisionjp/VehicleVision.DesignReference css/app-base.css(第 2.4 版・0730ea982f56956e724cdc6782b8bfd0827b0e91・2026-11-01 参照)。手で直さない。更新は DesignReference 側で行い、ここへ写し直す */
 /* VehicleVision DesignReference: アプリ(Web UI・管理画面)の基本スタイル。コピーして使う 1 ファイル。
    - 色は含めない。先に色のトークンを読み込む(アプリは css/colors-explicit.css(明示型)、サイト・公開物は css/colors.css(追従型))。
    - 書体は同梱する(css/app-fonts.css と fonts/app/。見た目を端末によらず統一する)。このファイルは書体名の候補だけを持ち、

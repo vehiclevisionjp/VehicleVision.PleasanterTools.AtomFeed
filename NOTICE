@@ -92,7 +92,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
     （Bold。© 2021 The Zen Maru Gothic Project Authors）
   Myrica M 2.012.20180119 / SIL Open Font License 1.1 + M+ FONTS / https://myrica.estable.jp/
     （© 2006-2012 Raph Levien（Inconsolata）、© 2013 M+ FONTS PROJECT、© 2013 itouhiro（Migu）、© 2014 MM（GenShinGothic）、© 2014 Adobe（Noto Sans JP）。コード・数値の表示に使う）
-    （上の 3 書体は、文字を絞って woff2 にしたものを、VehicleVision.DesignReference 2.3（080f9b3）から複写して同梱する）
+    （上の 3 書体は、文字を絞って woff2 にしたものを、VehicleVision.DesignReference 2.4（0730ea9）から複写して同梱する）
     （書体のライセンス全文: リポジトリの Frontend/public/licenses/。配布物では wwwroot/admin/licenses/。
       複写の出どころ（版・SHA）: Frontend/src/styles/designreference/fonts/SOURCE.json。
       書体の設計・書体名は変えていない（形式の変換と文字の絞り込みのみ。名前テーブルの著作権・ライセンスの記録は残してある）。
