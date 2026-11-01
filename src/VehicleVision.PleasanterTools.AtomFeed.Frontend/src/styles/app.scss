@@ -1,49 +1,13 @@
 // CSP は style-src 'self'。インラインの style 属性・<style> は使えないので、見た目はすべてここへ書く。
-:root {
-  color-scheme: light dark;
-  // 配色は Questionnaire の管理画面に揃える（同じ組織の製品として、見た目をそろえる）
-  --bg: #f9fafb;
-  --surface: #ffffff;
-  --surface-2: #f2f4f7;
-  --text: #101828;
-  --muted: #667085;
-  --border: #d0d5dd;
-  --accent: #175cd3;
-  --accent-text: #ffffff;
-  --danger: #b42318;
-  --danger-bg: #fef3f2;
-  --ok: #067647;
-  --ok-bg: #ecfdf3;
-  --warn: #7a4b00;
-  --warn-bg: #fff4e5;
-  --radius: 8px;
-  // 同梱した書体（@fontsource-variable）。等幅は日本語も等幅になる
-  --font: 'Noto Sans JP Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --mono: 'M PLUS 1 Code Variable', ui-monospace, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #12161d;
-    --surface: #1b212b;
-    --surface-2: #232b37;
-    --text: #e6eaf0;
-    --muted: #9aa5b5;
-    --border: #323c4b;
-    --accent: #6ea4f5;
-    --accent-text: #0c1a30;
-    --danger: #f2877f;
-    --danger-bg: #3a1f1d;
-    --ok: #6fcf8f;
-    --ok-bg: #173325;
-    --warn: #f0c36a;
-    --warn-bg: #3a2f14;
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
+//
+// 見た目の基準は VehicleVision.DesignReference（Web UI の章。明示型）。
+//   - 色・書体・余白・角丸・影・フォーカスリング・prefers-reduced-motion は、main.ts が先に読み込む
+//     styles/designreference/colors-explicit.css と app-base.css のトークン（var(--color-*) ほか）を使う。
+//     **ここへ色コードを書かない**（必要な色が無ければ DesignReference に足す）
+//   - 部品（ボタン・フォーム・表・ダイアログ・アラート・バッジ・ナビ）は DesignReference の components/app-ui.css の
+//     決まりに合わせる。この画面のクラス名（.btn・.notice ほか）は、既存のマークアップのまま
+//   - 既定はライト。OS の prefers-color-scheme には従わない（ダークの切り替えは持たない。colors-explicit.css の
+//     ダークは、<html data-theme="dark"> を付けたときだけ効く）
 
 // アイコンの下地（同梱した Material Icons）。中身はアイコンの名前（リガチャで字形へ置き換わる）。
 // **意味は文字でも書くこと**（アイコンだけの釦は読み上げで何も伝わらない）。**aria-hidden="true" を必ず付ける**
@@ -61,109 +25,89 @@
 }
 
 .btn .material-icons {
-  margin-right: 0.25em;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 15px/1.6 var(--font);
-}
-
-h1,
-h2,
-h3 {
-  line-height: 1.3;
-  margin: 0 0 0.5em;
-}
-
-h1 {
-  font-size: 1.5rem;
-}
-
-h2 {
-  font-size: 1.2rem;
-}
-
-h3 {
-  font-size: 1.05rem;
-}
-
-p {
-  margin: 0 0 0.8em;
-}
-
-a {
-  color: var(--accent);
+  margin-right: var(--space-1);
 }
 
 code,
 .mono {
-  font-family: var(--mono);
-  font-size: 0.9em;
+  font-family: var(--font-code);
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .small {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
 }
 
 // ---- レイアウト ----
+// ヘッダーは鉄紺（ライト・ダークとも）。白い文字・白いフォーカスリング
 .shell-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1.25rem;
-  padding: 0.6rem 1rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-2) var(--space-4);
+  min-height: 56px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-on-fill);
+  border-bottom: 1px solid var(--color-primary-edge);
+
+  :focus-visible {
+    outline-color: var(--color-on-fill);
+  }
+
+  .muted {
+    color: var(--color-on-fill);
+  }
 }
 
 .brand {
+  font-family: var(--font-heading);
   font-weight: 700;
-  letter-spacing: 0.01em;
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: var(--space-1);
   flex: 1;
 }
 
 .nav button {
+  min-height: 36px;
   background: transparent;
   border: 0;
-  padding: 0.45rem 0.8rem;
-  border-radius: var(--radius);
-  color: var(--muted);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-on-fill);
   font: inherit;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
 .nav button:hover {
-  background: var(--surface-2);
+  background: var(--color-primary-hover);
 }
 
+// 現在のページ: 太字 + 下の帯 + 濃い面（色だけで示さない）
 .nav button[aria-current='page'] {
-  background: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
+  background: var(--color-primary-hover);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--color-on-fill);
 }
 
 .header-tools {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-3);
   flex-shrink: 0;
 }
 
 .header-tools select {
   width: auto;
+  min-height: 36px;
 }
 
 button {
@@ -173,22 +117,23 @@ button {
 main {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 1.25rem 1rem 3rem;
+  padding: var(--space-6) var(--space-4) var(--space-12);
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.1rem 1.25rem;
-  margin-bottom: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 .auth-wrap {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: var(--space-4);
 }
 
 .auth-card {
@@ -201,8 +146,8 @@ main {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .page-head h1 {
@@ -213,31 +158,33 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-3);
 }
 
 // ---- フォーム ----
 label {
   display: block;
-  font-weight: 600;
-  margin-bottom: 0.2rem;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  margin-bottom: var(--space-1);
 }
 
 .field {
-  margin-bottom: 0.9rem;
+  margin-bottom: var(--space-4);
 }
 
 .field .hint {
-  color: var(--muted);
-  font-size: 0.85rem;
-  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+  margin-top: var(--space-1);
 }
 
+// 「必須」「任意」の印（文字で書く。色だけにしない）
 .mark {
-  font-weight: 400;
-  font-size: 0.78rem;
-  color: var(--muted);
-  margin-left: 0.4rem;
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  margin-left: var(--space-2);
 }
 
 input[type='text'],
@@ -248,155 +195,265 @@ input[type='url'],
 select,
 textarea {
   width: 100%;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
+  min-height: var(--control-h);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
   font: inherit;
+  font-size: var(--fs-sm);
 }
 
-textarea {
-  min-height: 5.5rem;
-  font-family: var(--mono);
-  font-size: 0.9rem;
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
 }
 
-input:disabled,
-select:disabled {
-  background: var(--surface-2);
-  color: var(--muted);
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
 }
 
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible,
-button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+textarea:focus-visible {
+  border-color: var(--color-primary-text);
 }
 
+textarea {
+  min-height: 96px;
+  resize: vertical;
+  font-family: var(--font-code);
+  font-size: var(--fs-sm);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+}
+
+// チェックボックス（ラベルの文字を押しても切り替わる）
 .check {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: var(--space-2);
   font-weight: 400;
+  cursor: pointer;
 }
 
 .check input {
-  width: auto;
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.check input:checked {
+  background: var(--color-primary-text);
+  border-color: var(--color-primary-text);
+}
+
+.check input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--color-surface);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.check input:disabled {
+  border-color: var(--color-border);
+  cursor: not-allowed;
 }
 
 .grid {
   display: grid;
-  gap: 0 1rem;
+  gap: 0 var(--space-4);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 fieldset {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.8rem 1rem 0.2rem;
-  margin: 0 0 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4) var(--space-1);
+  margin: 0 0 var(--space-4);
 }
 
 legend {
   font-weight: 700;
-  padding: 0 0.4rem;
+  padding: 0 var(--space-2);
 }
 
 // ---- ボタン ----
+// 既定は副次（縁取り）、.primary は主要（鉄紺）、.danger は危険（茜）
 button.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
   font: inherit;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.2;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary-text);
+  background: var(--color-surface);
+  color: var(--color-primary-text);
   cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    filter 0.15s;
 }
 
 button.btn:hover:not(:disabled) {
-  background: var(--surface-2);
+  background: var(--color-primary-subtle);
 }
 
+// 無効: 色を落として枠だけにする（透過にしない）
 button.btn:disabled {
-  opacity: 0.55;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
   cursor: not-allowed;
 }
 
 button.btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-  font-weight: 600;
+  background: var(--color-primary);
+  border-color: var(--color-primary-edge);
+  color: var(--color-on-fill);
 }
 
 button.btn.primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-  background: var(--accent);
+  background: var(--color-primary-hover);
 }
 
 button.btn.danger {
-  color: var(--danger);
-  border-color: var(--danger);
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-on-fill);
+}
+
+button.btn.danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  filter: brightness(0.9);
 }
 
 button.btn.small {
-  padding: 0.25rem 0.6rem;
-  font-size: 0.85rem;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-xs);
 }
 
+// 外部のログイン（SAML）へ進むリンク。副次ボタンと同じ見た目
 .btn-link {
-  display: inline-block;
-  cursor: pointer;
-  background: transparent;
-  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary-text);
+  background: var(--color-surface);
+  color: var(--color-primary-text);
+  font: inherit;
+  font-family: var(--font-heading);
+  font-size: var(--fs-sm);
+  font-weight: 700;
   text-align: center;
-  padding: 0.55rem 1rem;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.btn-link:hover:not(:disabled) {
-  background: var(--surface-2);
+.btn-link:hover {
+  background: var(--color-primary-subtle);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
-// ---- 通知 ----
+// ---- 通知（アラート）----
+// 種類は、記号（i ✓ ! ×）・左の帯・縁の色で示す。本文は --color-text（長い文を状態色にしない）
 .notice {
-  padding: 0.6rem 0.85rem;
-  border-radius: 6px;
-  margin-bottom: 0.9rem;
-  border: 1px solid transparent;
+  --notice-c: var(--color-primary-text);
+  --notice-bg: var(--color-primary-subtle);
+  position: relative;
+  padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-4) + 1.5em + var(--space-3));
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--notice-c);
+  border-left-width: 6px;
+  background: var(--notice-bg);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+.notice::before {
+  content: 'i';
+  position: absolute;
+  left: var(--space-4);
+  top: var(--space-3);
+  width: 1.5em;
+  height: 1.5em;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-surface);
+  background: var(--notice-c);
+  border-radius: 50%;
 }
 
 .notice.error {
-  background: var(--danger-bg);
-  color: var(--danger);
-  border-color: var(--danger);
+  --notice-c: var(--color-danger-text);
+  --notice-bg: var(--color-danger-subtle);
+}
+
+.notice.error::before {
+  content: '×';
 }
 
 .notice.ok {
-  background: var(--ok-bg);
-  color: var(--ok);
-  border-color: var(--ok);
+  --notice-c: var(--color-success-text);
+  --notice-bg: var(--color-success-subtle);
+}
+
+.notice.ok::before {
+  content: '✓';
 }
 
 .notice.warn {
-  background: var(--warn-bg);
-  color: var(--warn);
-  border-color: var(--warn);
+  --notice-c: var(--color-warning-text);
+  --notice-bg: var(--color-warning-subtle);
+}
+
+.notice.warn::before {
+  content: '!';
 }
 
 // ---- 表 ----
@@ -407,137 +464,201 @@ button.btn.small {
 table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--fs-sm);
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
   vertical-align: top;
 }
 
+// 見出し行は鉄紺・白文字
 th {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 600;
+  font-family: var(--font-heading);
+  font-weight: 700;
   white-space: nowrap;
+  background: var(--color-primary);
+  color: var(--color-on-fill);
+  border-bottom-color: var(--color-primary-edge);
+}
+
+tbody tr:hover {
+  background: var(--color-bg);
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+// 表の中の選択（役割など）は、文言が切れない幅を確保する
+td select {
+  min-width: 10rem;
+}
+
+td > .badge:not(:first-child) {
+  margin-left: var(--space-1);
 }
 
 td.num {
   text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
+// ---- バッジ（状態・分類の短いラベル）----
+// 状態は、色の塗り + 記号 + 文言で示す。記号は CSS が付ける（意味は文言が持つ）
 .badge {
-  display: inline-block;
-  padding: 0.05rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
   border-radius: 999px;
-  font-size: 0.78rem;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.7;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-text);
   white-space: nowrap;
 }
 
 .badge.ok {
-  background: var(--ok-bg);
-  color: var(--ok);
-  border-color: var(--ok);
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-on-fill);
+}
+
+.badge.ok::before {
+  content: '✓';
 }
 
 .badge.bad {
-  background: var(--danger-bg);
-  color: var(--danger);
-  border-color: var(--danger);
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-on-fill);
+}
+
+.badge.bad::before {
+  content: '×';
 }
 
 .badge.warn {
-  background: var(--warn-bg);
-  color: var(--warn);
-  border-color: var(--warn);
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: var(--color-on-warning);
+}
+
+.badge.warn::before {
+  content: '!';
 }
 
 // ---- コピー欄・コード ----
 .copy-row {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .copy-row input {
-  font-family: var(--mono);
-  font-size: 0.85rem;
+  font-family: var(--font-code);
+  font-size: var(--fs-sm);
 }
 
 .codes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.4rem;
-  margin: 0.6rem 0 1rem;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-4);
   padding: 0;
   list-style: none;
 }
 
 .codes li {
-  font-family: var(--mono);
-  background: var(--surface-2);
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  padding: 0.35rem 0.6rem;
+  font-family: var(--font-code);
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
   text-align: center;
   letter-spacing: 0.04em;
 }
 
+// QR コードは、読み取れるように、地を常に白（ダークでも）にする
 .qr {
   display: block;
-  margin: 0.5rem auto 0.8rem;
+  margin: var(--space-2) auto var(--space-3);
   width: 200px;
   height: 200px;
-  background: #fff;
-  padding: 8px;
-  border-radius: 8px;
+  background: var(--color-on-fill);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
   image-rendering: pixelated;
 }
 
-// ---- ダイアログ ----
+// ---- ダイアログ（<dialog> + showModal()。背面は inert、Esc で閉じる）----
 dialog {
-  width: min(560px, calc(100vw - 2rem));
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  padding: 1.2rem 1.3rem;
+  width: min(32rem, calc(100vw - var(--space-8)));
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-4) var(--space-6) var(--space-6);
 }
 
 dialog::backdrop {
-  background: rgba(10, 14, 20, 0.55);
+  background: var(--overlay-bg);
 }
 
 dialog.wide {
-  width: min(860px, calc(100vw - 2rem));
+  width: min(860px, calc(100vw - var(--space-8)));
+}
+
+// 見出しは罫線で本文と区切る
+dialog > h2 {
+  margin: 0 calc(-1 * var(--space-6)) var(--space-4);
+  padding: 0 var(--space-6) var(--space-3);
+  font-size: var(--fs-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+// 危険な操作: 上の帯 + 見出しの記号（色だけにしない）
+dialog.danger {
+  border-top: 6px solid var(--color-danger-text);
+}
+
+dialog.danger > h2 {
+  color: var(--color-danger-text);
+}
+
+dialog.danger > h2::before {
+  content: '!';
+  display: inline-grid;
+  place-items: center;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.4em;
+  font-size: 0.8em;
+  line-height: 1;
+  vertical-align: 0.08em;
+  color: var(--color-surface);
+  background: var(--color-danger-text);
+  border-radius: 50%;
 }
 
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 @media (max-width: 640px) {
-  body {
-    font-size: 14.5px;
-  }
-
   .card {
-    padding: 0.9rem;
+    padding: var(--space-4);
   }
 
   // 狭い画面: 見出しの行を重ねず、ナビは横にスクロールさせる
@@ -574,19 +695,19 @@ dialog.wide {
   }
 
   tr {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
   }
 
   td {
     border: 0;
-    padding: 0.2rem 0;
+    padding: var(--space-1) 0;
   }
 
   td[data-label]::before {
     content: attr(data-label);
     display: block;
-    font-size: 0.75rem;
-    color: var(--muted);
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
   }
 }
