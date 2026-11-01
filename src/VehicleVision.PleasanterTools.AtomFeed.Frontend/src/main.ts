@@ -1,4 +1,4 @@
-// アイコン（Material Icons）と文字の書体（DesignReference の app-fonts.css。Noto Sans CJK JP・Myrica M・Noto Sans Mono CJK JP）は
+// アイコン（Material Icons）と文字の書体（DesignReference の app-fonts.css。Zen Kaku Gothic New・Zen Maru Gothic・Myrica M）は
 // 同梱する（CSP の font-src 'self' で配る）。書体は文字を絞った woff2 を unicode-range で区画に分け、使う区画だけ読み込む。
 // 同梱の書体が読めない・範囲外の字は、app-base.css の候補（Hiragino Sans → Yu Gothic UI → … → system-ui）で表示する
 import '@fontsource/material-icons';
