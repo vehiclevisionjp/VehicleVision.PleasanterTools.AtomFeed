@@ -58,6 +58,35 @@ public sealed class FeedWriterTests
     }
 
     [Fact]
+    public void Atomは全記事に著者があればfeedにauthorを出さない()
+    {
+        var feed = XDocument.Parse(AtomWriter.Write(Channel(), [Entry()])).Root!;
+
+        Assert.Null(feed.Element(Atom + "author"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Atomは著者の無い記事があればfeedにauthorを出す_RFC4287(bool noneHasAuthor)
+    {
+        FeedEntry[] entries = noneHasAuthor
+            ? [Entry() with { Author = null }, Entry("urn:atomfeed:abc:1:2") with { Author = " " }]
+            : [Entry(), Entry("urn:atomfeed:abc:1:2") with { Author = null }];
+        var feed = XDocument.Parse(AtomWriter.Write(Channel("お知らせ帳"), entries)).Root!;
+
+        Assert.Equal("お知らせ帳", (string?)feed.Element(Atom + "author")!.Element(Atom + "name"));
+    }
+
+    [Fact]
+    public void Atomは記事が無いときもfeedにauthorを出す()
+    {
+        var feed = XDocument.Parse(AtomWriter.Write(Channel("空"), [])).Root!;
+
+        Assert.Equal("空", (string?)feed.Element(Atom + "author")!.Element(Atom + "name"));
+    }
+
+    [Fact]
     public void Atomの記事が無ければ_feedのupdatedは出力時刻()
     {
         var feed = XDocument.Parse(AtomWriter.Write(Channel(), [])).Root!;
