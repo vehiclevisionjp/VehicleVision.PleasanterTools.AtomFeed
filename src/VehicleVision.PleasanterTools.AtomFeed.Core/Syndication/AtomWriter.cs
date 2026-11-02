@@ -44,6 +44,15 @@ public static class AtomWriter
                 Link(xml, "alternate", channel.SiteUrl, null);
             }
 
+            // RFC 4287 §4.1.1: すべての記事が著者を持たない限り、feed が author を持たなければならない（MUST）。
+            // 記事が 1 件も無いときも、後から著者の無い記事が増えるので出しておく
+            if (list.Count == 0 || list.Any(e => string.IsNullOrWhiteSpace(e.Author)))
+            {
+                xml.WriteStartElement("author");
+                xml.WriteElementString("name", XmlText.Clean(channel.Title));
+                xml.WriteEndElement();
+            }
+
             xml.WriteElementString("generator", "VehicleVision.PleasanterTools.AtomFeed");
 
             foreach (var entry in list)
