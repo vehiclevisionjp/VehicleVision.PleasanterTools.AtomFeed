@@ -10,15 +10,18 @@ namespace VehicleVision.PleasanterTools.AtomFeed.Web.Endpoints;
 /// <summary>購読フィード（<c>/feeds/{token}.atom</c> / <c>/feeds/{token}.rss</c>）。同じフィードを 2 つの形式で出す。</summary>
 public static class FeedEndpoints
 {
+    /// <summary>GET と HEAD（リーダーの死活確認）。HEAD は本文を返さず、同じヘッダを返す。</summary>
+    private static readonly string[] GetAndHead = ["GET", "HEAD"];
+
     /// <summary>購読フィードの口を登録する。</summary>
     public static void MapFeeds(this WebApplication app)
     {
-        app.MapGet("/feeds/{token}.atom", (
+        app.MapMethods("/feeds/{token}.atom", GetAndHead, (
             string token, HttpContext http, IFeedStore feeds, FeedService service, RuntimeSettings settings,
             ILogger<Program> logger, CancellationToken ct) =>
             ServeAsync(FeedFormat.Atom, token, http, feeds, service, settings, logger, ct)).RequireRateLimiting("feed");
 
-        app.MapGet("/feeds/{token}.rss", (
+        app.MapMethods("/feeds/{token}.rss", GetAndHead, (
             string token, HttpContext http, IFeedStore feeds, FeedService service, RuntimeSettings settings,
             ILogger<Program> logger, CancellationToken ct) =>
             ServeAsync(FeedFormat.Rss, token, http, feeds, service, settings, logger, ct)).RequireRateLimiting("feed");
@@ -82,11 +85,26 @@ public static class FeedEndpoints
         http.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
         http.Response.Headers["X-Content-Type-Options"] = "nosniff";
 
-        if (http.Request.Headers.IfNoneMatch == etag)
+        var lastModified = entries.Count == 0 ? (DateTimeOffset?)null : ConditionalGet.TruncateToSeconds(entries.Max(e => e.Updated));
+        if (lastModified is { } modified)
+        {
+            http.Response.Headers.LastModified = modified.ToString("r", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (ConditionalGet.IsNotModified(http.Request.Headers, etag, lastModified))
         {
             return Results.StatusCode(StatusCodes.Status304NotModified);
         }
 
-        return Results.Text(body, $"{(format == FeedFormat.Rss ? RssWriter.ContentType : AtomWriter.ContentType)}; charset=utf-8");
+        var contentType = $"{(format == FeedFormat.Rss ? RssWriter.ContentType : AtomWriter.ContentType)}; charset=utf-8";
+        if (HttpMethods.IsHead(http.Request.Method))
+        {
+            // HEAD は GET と同じヘッダで本文なし
+            http.Response.ContentType = contentType;
+            http.Response.ContentLength = Encoding.UTF8.GetByteCount(body);
+            return Results.Empty;
+        }
+
+        return Results.Text(body, contentType);
     }
 }
