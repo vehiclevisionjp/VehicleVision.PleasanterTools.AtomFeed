@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using VehicleVision.PleasanterTools.Core.Mail;
 using VehicleVision.PleasanterTools.AtomFeed.Security;
 using VehicleVision.PleasanterTools.AtomFeed.Web.Services;
@@ -119,6 +120,13 @@ internal sealed class TestApp : IDisposable
 
             builder.ConfigureTestServices(services =>
             {
+                // **監査ログの掃除の常駐処理は動かさない**（起動直後の掃除が、テストが書いた古い記録を先に消して、掃除の件数を数えるテストが落ちた。Issue #49）。
+                // 掃除そのものは AuditLogRetentionService.SweepAsync をテストが呼んで確かめる
+                foreach (var worker in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(AuditLogRetentionWorker)).ToList())
+                {
+                    services.Remove(worker);
+                }
+
                 services.AddHttpClient<Pleasanter.PleasanterClient>()
                     .ConfigurePrimaryHttpMessageHandler(() => Pleasanter);
                 services.AddHttpClient(VehicleVision.PleasanterTools.Core.Web.PleasanterSessionVerifier.HttpClientName)
@@ -377,6 +385,85 @@ public sealed class FeedEndpointTests : IDisposable
 
         Assert.Equal(HttpStatusCode.NotModified, second.StatusCode);
         Assert.Equal(1, _app.Pleasanter.CallCount);
+    }
+
+    [Theory]
+    [InlineData("W/{0}")]
+    [InlineData("\"other\", {0}")]
+    [InlineData("*")]
+    public async Task If_None_Matchは弱いETag_リスト_アスタリスクでも304(string format)
+    {
+        var (path, _) = await _app.CreateFeedAsync();
+        var client = _app.Client();
+
+        var first = await client.GetAsync(path);
+        using var conditional = new HttpRequestMessage(HttpMethod.Get, path);
+        conditional.Headers.TryAddWithoutValidation("If-None-Match", string.Format(System.Globalization.CultureInfo.InvariantCulture, format, first.Headers.ETag!.Tag));
+        var second = await client.SendAsync(conditional);
+
+        Assert.Equal(HttpStatusCode.NotModified, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task 一致しないETagは200()
+    {
+        var (path, _) = await _app.CreateFeedAsync();
+        using var conditional = new HttpRequestMessage(HttpMethod.Get, path);
+        conditional.Headers.TryAddWithoutValidation("If-None-Match", "\"nope\"");
+
+        Assert.Equal(HttpStatusCode.OK, (await _app.Client().SendAsync(conditional)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Last_Modifiedを出しIf_Modified_Sinceで304を返す()
+    {
+        var (path, _) = await _app.CreateFeedAsync();
+        var client = _app.Client();
+
+        var first = await client.GetAsync(path);
+        var lastModified = first.Content.Headers.LastModified;
+        Assert.NotNull(lastModified);
+
+        using var same = new HttpRequestMessage(HttpMethod.Get, path);
+        same.Headers.TryAddWithoutValidation("If-Modified-Since", lastModified!.Value.ToString("r", System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(same)).StatusCode);
+
+        using var older = new HttpRequestMessage(HttpMethod.Get, path);
+        older.Headers.TryAddWithoutValidation(
+            "If-Modified-Since", lastModified.Value.AddDays(-1).ToString("r", System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(older)).StatusCode);
+    }
+
+    [Fact]
+    public async Task If_None_Matchがあれば_If_Modified_Sinceは見ない()
+    {
+        var (path, _) = await _app.CreateFeedAsync();
+        var client = _app.Client();
+
+        var first = await client.GetAsync(path);
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.TryAddWithoutValidation("If-None-Match", "\"nope\"");
+        request.Headers.TryAddWithoutValidation(
+            "If-Modified-Since", first.Content.Headers.LastModified!.Value.ToString("r", System.Globalization.CultureInfo.InvariantCulture));
+
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(request)).StatusCode);
+    }
+
+    [Fact]
+    public async Task HEADは本文なしで同じヘッダを返し_不明なトークンは404()
+    {
+        var (path, _) = await _app.CreateFeedAsync();
+        var client = _app.Client();
+
+        using var head = new HttpRequestMessage(HttpMethod.Head, path);
+        var response = await client.SendAsync(head);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(response.Headers.ETag);
+        Assert.Empty(await response.Content.ReadAsStringAsync());
+
+        using var unknown = new HttpRequestMessage(HttpMethod.Head, "/feeds/unknown.atom");
+        Assert.Equal(HttpStatusCode.NotFound, (await client.SendAsync(unknown)).StatusCode);
     }
 
     [Fact]

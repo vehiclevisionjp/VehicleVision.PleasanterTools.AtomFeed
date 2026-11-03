@@ -19,10 +19,10 @@ import { chromium } from 'playwright-core';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..', '..');
-const outDir = path.join(root, '_documents', '画面の写し');
+const outDir = process.env.SHOT_DIR ?? path.join(root, '_documents', '画面の写し');
 const webProject = path.join(root, 'src', 'VehicleVision.PleasanterTools.AtomFeed.Web');
-const APP = 'http://localhost:5099';
-const FAKE_PLEASANTER_PORT = 18080;
+const APP = process.env.SHOT_APP ?? 'http://localhost:5099';
+const FAKE_PLEASANTER_PORT = Number(process.env.SHOT_FAKE_PORT ?? 18080);
 const PASSWORD = 'correct horse battery staple';
 
 mkdirSync(outDir, { recursive: true });
@@ -238,7 +238,7 @@ try {
     data: {
       values: {
         ATOMFEED_SAML_ENABLED: 'true',
-        ATOMFEED_SAML_ENTITYID: 'http://localhost:5099/admin/api/saml/metadata',
+        ATOMFEED_SAML_ENTITYID: `${APP}/admin/api/saml/metadata`,
         ATOMFEED_SAML_IDPENTITYID: 'https://idp.example.com/realms/atomfeed',
         ATOMFEED_SAML_SINGLESIGNONURL: 'https://idp.example.com/realms/atomfeed/protocol/saml',
         ATOMFEED_SAML_IDPCERTIFICATE: `-----BEGIN CERTIFICATE-----\n${idpCertificate}\n-----END CERTIFICATE-----`,
@@ -277,11 +277,8 @@ try {
   await page.setViewportSize({ width: 390, height: 800 });
   await shot(page, 'フィード-スマートフォン幅');
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await shot(page, 'フィード-ダークモード');
 
   // 11. 設定の SAML の群（IdP へ登録する URL が出る）
-  await page.emulateMedia({ colorScheme: 'light' });
   await page.selectOption('select.lang', 'ja');
   await page.click('nav button:has-text("設定")');
   await page.waitForSelector('text=SP のメタデータ URL');
