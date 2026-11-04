@@ -30,7 +30,7 @@ public sealed class FeedOptions
 
 /// <summary>Pleasanter から取って、Atom / RSS を組み立てる。</summary>
 public sealed class FeedService(
-    PleasanterClient client,
+    PleasanterGateway client,
     IFeedStore feeds,
     RuntimeSettings settings,
     IMemoryCache cache,

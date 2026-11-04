@@ -1,7 +1,7 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Dnc = VehicleVision.PleasanterTools.DotNetClient;
 
 namespace VehicleVision.PleasanterTools.AtomFeed.Pleasanter;
 
@@ -9,8 +9,11 @@ namespace VehicleVision.PleasanterTools.AtomFeed.Pleasanter;
 /// <remarks>**API キーを設定ファイルへ直書きしないこと。** 環境変数かローカル上書きで渡す。</remarks>
 public sealed class PleasanterOptions
 {
-    /// <summary>API の呼び出し先。末尾のスラッシュは付けない。</summary>
-    /// <summary>Pleasanter の URL。<b>未設定（空）でも起動する</b>（管理画面から設定できる）。未設定のまま取りに行くと失敗する。</summary>
+    /// <summary>
+    /// Pleasanter の URL。<b>未設定（空）でも起動する</b>（管理画面から設定できる）。未設定のまま取りに行くと失敗する。
+    /// 末尾のスラッシュは付けない。<b>https のみ（ループバックだけ http 可）。資格情報・クエリ・フラグメントは付けない</b>
+    /// （API キーを本文で送るため。DotNetClient が通信の前に検査し、満たさなければ <see cref="PleasanterErrorKind.Permanent"/> で失敗する）。
+    /// </summary>
     public string BaseUrl { get; init; } = string.Empty;
 
     /// <summary>
@@ -71,8 +74,7 @@ public sealed class PleasanterException(PleasanterErrorKind kind, string message
 /// <param name="Records">このページのレコード。</param>
 public sealed record PleasanterPage(int TotalCount, int PageSize, IReadOnlyList<JsonNode> Records);
 
-/// <summary>Pleasanter の標準 API を叩く（一覧の取得）。</summary>
-/// <remarks>**再試行しない。** 失敗の扱いは呼び出し側が決める。</remarks>
+
 /// <summary>接続設定の出どころ。<b>呼び出すたびに読む</b>（管理画面で編集した設定が、再起動なしで効く）。</summary>
 public interface IPleasanterOptionsSource
 {
@@ -80,14 +82,45 @@ public interface IPleasanterOptionsSource
     PleasanterOptions Current { get; }
 }
 
-public sealed class PleasanterClient(HttpClient httpClient, IPleasanterOptionsSource optionsSource)
+/// <summary>
+/// DotNetClient の <see cref="Dnc.PleasanterApiClient"/> を、本アプリの呼び方（一覧の取得・失敗の分類）で包む。
+/// </summary>
+/// <remarks>
+/// <para>
+/// **再試行しない。** 失敗の扱いは呼び出し側が決める。失敗は <see cref="PleasanterException"/>（<see cref="PleasanterErrorKind"/>）で投げる。
+/// 例外のメッセージは固定の文言だけで、<b>API キー・BaseUrl・Pleasanter が返した文言を含めない</b>
+/// （購読側へは分類だけが 502 / 503 として伝わり、管理画面の「最後の取得結果」には分類と固定の文言だけが残る）。
+/// </para>
+/// <para>
+/// 通信の経路（<see cref="HttpClient"/>）は呼び出し側が作る。<b>リダイレクトを辿らない
+/// <see cref="Dnc.PleasanterHttp.CreateHandler"/> を使うこと</b>（API キーは本文に載り、307・308 は本文を転送先へ再送するため。
+/// DI では <c>ConfigurePrimaryHttpMessageHandler(PleasanterHttp.CreateHandler)</c>）。
+/// <c>BaseUrl</c> の検査（https のみ・ループバックだけ http・資格情報／クエリ／フラグメント拒否）は、DotNetClient が通信の前に呼び出しごとに行う。
+/// </para>
+/// <para>
+/// <b>API キーは呼び出しごとに渡される</b>（フィードごとに違う）ので、<see cref="Dnc.PleasanterApiClient"/> は呼び出しごとに作る
+/// （軽い。<see cref="HttpClient"/> は使い回す）。型付きのメソッド（<c>client.Items.*</c>）は使わず、
+/// <see cref="Dnc.PleasanterApiClient.PostJsonAsync"/> だけを使う。型付きは最初の呼び出しの前に版の問い合わせ（<c>GetLicenseInfo</c>）を行い、
+/// 本アプリが数えない API の呼び出しが増える（Pleasanter 1.5.6.0 からはレート制限の対象）うえ、本アプリは応答を型へ読まず <c>JsonNode</c> のまま使うため。
+/// <c>DetectServerVersion = false</c> も指定している。
+/// </para>
+/// <para>
+/// <b>DotNetClient 0.2.0 に無いものを、ここで補っている。</b> 該当の変更を含む版へ上げたら、不要になった分を消す。
+/// </para>
+/// <list type="bullet">
+/// <item><description>HTTP が 200 でも、本文の <c>StatusCode</c> が 200 以外なら失敗として分類する
+/// （DotNetClient #95・PR #96 は develop にあるが 0.2.0 には無い。<b>DotNetClient #95 を含む版へ上げたら、この補いは消せる</b>）</description></item>
+/// <item><description>HTTP 429 を <see cref="PleasanterErrorKind.RateLimited"/> として分ける（DotNetClient は <c>Transient</c>）。
+/// 日次の上限は日付が変わるまで戻らず、購読側へ返す <c>Retry-After</c> の決め方が違うため。
+/// 本アプリは Pleasanter の <c>Retry-After</c> ヘッダを読まない（購読側へ返す待ち時間は、分類と API キーの利用者のタイムゾーンの 0 時で決める）</description></item>
+/// </list>
+/// <para>ここに書いた応答の形は設計文書の推奨と参照ソースの確認に基づく。**実機の Pleasanter では未検証。**</para>
+/// </remarks>
+public sealed class PleasanterGateway(HttpClient httpClient, IPleasanterOptionsSource optionsSource)
 {
     private PleasanterOptions options => optionsSource.Current;
 
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
-    };
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>サイトのレコードを 1 ページ取り出す。</summary>
     /// <param name="apiKey">この呼び出しに使う API キー。**ログ・例外へ出さない。**</param>
@@ -196,19 +229,17 @@ public sealed class PleasanterClient(HttpClient httpClient, IPleasanterOptionsSo
         Dictionary<string, object?> view,
         CancellationToken cancellationToken)
     {
-        var body = new Dictionary<string, object?>
+        var body = new JsonObject
         {
-            ["ApiKey"] = apiKey,
-            ["ApiVersion"] = options.ApiVersion,
             ["Offset"] = offset,
             ["PageSize"] = pageSize,
         };
         if (view.Count > 0)
         {
-            body["View"] = view;
+            body["View"] = JsonSerializer.SerializeToNode(view, SerializerOptions);
         }
 
-        var node = await PostAsync($"api/items/{siteId}/Get", body, cancellationToken).ConfigureAwait(false);
+        var node = await PostAsync($"api/items/{siteId}/Get", apiKey, body, cancellationToken).ConfigureAwait(false);
         if (node["Response"] is not JsonObject payload || payload["Data"] is not JsonArray data)
         {
             throw new PleasanterException(
@@ -225,71 +256,82 @@ public sealed class PleasanterClient(HttpClient httpClient, IPleasanterOptionsSo
     /// 標準 API へ POST し、状態を見て応答の JSON を返す。<b>API キーは本文にしか載せず、例外・ログへ出さない。</b>
     /// HTTP が 200 でも、本文の <c>StatusCode</c> が 200 でなければ失敗として扱う。
     /// </summary>
-    private async Task<JsonNode> PostAsync(string path, object body, CancellationToken cancellationToken)
+    private async Task<JsonObject> PostAsync(string path, string apiKey, JsonObject body, CancellationToken cancellationToken)
     {
+        var current = options;
+
         // 画面から編集できる設定なので、未設定のまま使われうる。分かるメッセージで止める（再試行しても直らない）
-        if (string.IsNullOrWhiteSpace(options.BaseUrl))
+        if (string.IsNullOrWhiteSpace(current.BaseUrl))
         {
             throw new PleasanterException(PleasanterErrorKind.Permanent, "Pleasanter の URL が設定されていません。管理画面の設定で指定してください。");
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{options.BaseUrl.TrimEnd('/')}/{path}")
+        var dncOptions = new Dnc.PleasanterOptions
         {
-            Content = JsonContent.Create(body, options: SerializerOptions),
+            BaseUrl = current.BaseUrl.TrimEnd('/'),
+            ApiKey = apiKey,
+            ApiVersion = current.ApiVersion,
+            Timeout = TimeSpan.FromSeconds(current.TimeoutSeconds),
+            DetectServerVersion = false,
         };
 
-        HttpResponseMessage response;
+        Dnc.PleasanterResponse response;
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(options.TimeoutSeconds));
-            response = await httpClient.SendAsync(request, timeout.Token).ConfigureAwait(false);
+            // 呼び出し側の取り消しは伝わる。それ以外の通信の失敗（接続・タイムアウト）は、DotNetClient が応答なし（Unknown）で返す
+            response = await new Dnc.PleasanterApiClient(httpClient, dncOptions)
+                .PostJsonAsync(path, body, cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (ArgumentException)
         {
-            throw;
+            // BaseUrl が使えない形（http の非ループバック・資格情報／クエリ／フラグメント付きなど）。
+            // DotNetClient の例外の文言は URL を含まない理由だけだが、画面へ出す文言はここで固定にする
+            throw new PleasanterException(
+                PleasanterErrorKind.Permanent,
+                "Pleasanter の URL が使えません。https（ループバックだけ http 可）で、資格情報・クエリ・フラグメントを含めずに、管理画面の設定で指定してください。");
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+
+        if (response.StatusCode is not { } status)
         {
-            // ex.Message に URL は載るが、API キーは本文にしか無いので漏れない
+            // 接続できない・タイムアウト。待てば直る見込みがある（従来と同じ分類）。例外の内容（URL を含み得る）は出さない
             throw new PleasanterException(PleasanterErrorKind.Transient, "Pleasanter へ接続できませんでした。");
         }
 
-        using (response)
+        if (status == (int)HttpStatusCode.TooManyRequests)
         {
-            var status = (int)response.StatusCode;
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new PleasanterException(
-                    Classify(response.StatusCode),
-                    $"Pleasanter が HTTP {status} を返しました。",
-                    status);
-            }
-
-            var raw = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            JsonNode? node;
-            try
-            {
-                node = JsonNode.Parse(raw);
-            }
-            catch (JsonException)
-            {
-                throw new PleasanterException(
-                    PleasanterErrorKind.Transient, "Pleasanter の応答が JSON ではありません。", status);
-            }
-
-            // 応答本文の StatusCode も見る（HTTP が 200 でも本文でエラーを返す場合に備える）
-            var bodyStatus = node?["StatusCode"]?.GetValue<int?>();
-            if (bodyStatus is { } s and not 200)
-            {
-                throw new PleasanterException(
-                    Classify((HttpStatusCode)s),
-                    $"Pleasanter が StatusCode {s} を返しました。",
-                    s);
-            }
-
-            return node ?? throw new PleasanterException(PleasanterErrorKind.Transient, "Pleasanter の応答が空です。", status);
+            throw new PleasanterException(PleasanterErrorKind.RateLimited, $"Pleasanter が HTTP {status} を返しました。", status);
         }
+
+        if (!response.IsSuccess)
+        {
+            throw new PleasanterException(
+                response.ErrorKind switch
+                {
+                    Dnc.PleasanterErrorKind.Unauthorized => PleasanterErrorKind.Unauthorized,
+                    Dnc.PleasanterErrorKind.Transient or Dnc.PleasanterErrorKind.Unknown => PleasanterErrorKind.Transient,
+                    _ => PleasanterErrorKind.Permanent,
+                },
+                $"Pleasanter が HTTP {status} を返しました。",
+                status);
+        }
+
+        if (response.Body is not JsonObject node)
+        {
+            // JSON でない（HTML・空など）。経路の問題とみなし、待てば直る見込みとして扱う（従来と同じ）
+            throw new PleasanterException(PleasanterErrorKind.Transient, "Pleasanter の応答が JSON ではありません。", status);
+        }
+
+        // 応答本文の StatusCode も見る（HTTP が 200 でも本文でエラーを返す場合に備える）。
+        // DotNetClient #95 を含む版へ上げたら消せる（DotNetClient 0.2.0 は HTTP のステータスだけで分類する）
+        if (node["StatusCode"] is JsonValue statusNode && statusNode.TryGetValue<int>(out var bodyStatus) && bodyStatus != 200)
+        {
+            throw new PleasanterException(
+                Classify((HttpStatusCode)bodyStatus),
+                $"Pleasanter が StatusCode {bodyStatus} を返しました。",
+                bodyStatus);
+        }
+
+        return node;
     }
 
     private static PleasanterErrorKind Classify(HttpStatusCode statusCode) => statusCode switch
