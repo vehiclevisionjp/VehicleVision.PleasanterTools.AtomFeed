@@ -51,7 +51,9 @@ builder.Services.AddTransient(sp => sp.GetRequiredService<RuntimeSettings>().Cur
 builder.Services.AddTransient(sp => sp.GetRequiredService<RuntimeSettings>().Current.Mail);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient<PleasanterClient>();
+// リダイレクトを辿らない・Cookie を持たない経路（API キーは本文に載るため。DotNetClient の PleasanterHttp）
+builder.Services.AddHttpClient<PleasanterGateway>()
+    .ConfigurePrimaryHttpMessageHandler(VehicleVision.PleasanterTools.DotNetClient.PleasanterHttp.CreateHandler);
 builder.Services.AddSingleton<FeedFailureNotifier>();
 builder.Services.AddSingleton<FeedService>();
 builder.Services.AddSingleton(sp =>

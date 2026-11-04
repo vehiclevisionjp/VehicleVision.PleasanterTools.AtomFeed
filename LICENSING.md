@@ -78,7 +78,7 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 
 <!-- license:begin pleasanter-note=free -->
 本アプリ専用の DB（フィード定義。SQLite / SQL Server / PostgreSQL / MySQL）は、Pleasanter の DB とは別に作ります。
-Pleasanter への HTTP 通信は、レコードの取得（`PleasanterClient`）と、Pleasanter のログインの本人確認の 2 つです。
+Pleasanter への HTTP 通信は、レコードの取得（`PleasanterGateway`。通信は DotNetClient）と、Pleasanter のログインの本人確認の 2 つです。
 確認は `scripts/reference-isolation-check.sh` と規約 6 で行います。
 <!-- license:end pleasanter-note -->
 
@@ -89,7 +89,7 @@ Pleasanter への HTTP 通信は、レコードの取得（`PleasanterClient`）
 `packages.lock.json` を置いているリポジトリでは、推移的依存と実際の版もそこで確認できます。
 
 <!-- license:begin deps-note=free -->
-当社の共通部品 Core（Core.Data・Core.Mail・Core.Web）への依存は、下の「例外: 当社の共通部品 Core」に書いています。
+当社の共通部品 Core（Core.Data・Core.Mail・Core.Web）と DotNetClient への依存は、下の「例外: 当社の共通部品 Core」「例外: 当社の共通部品 DotNetClient」に書いています。
 <!-- license:end deps-note -->
 
 これは意図的な制約です。**コピーレフト系（GPL / AGPL / SSPL 等）の依存が 1 つでも入ると、
@@ -134,7 +134,19 @@ Core の条件は、次を参照してください。
 [Core の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core/blob/develop/LICENSING.md)
 <!-- license:end core -->
 
-<!-- license:begin dotnetclient=off -->
+<!-- license:begin dotnetclient=on -->
+### 例外: 当社の共通部品 DotNetClient（LGPL／AGPL／商用のトリプルライセンス）
+
+本ソフトウェアは、当社の共通部品 DotNetClient（`VehicleVision.PleasanterTools.DotNetClient` の NuGet パッケージ）を利用します。
+DotNetClient は寛容ライセンスではなく、**LGPL-3.0-or-later・AGPL-3.0-or-later・商用ライセンスの 3 層**で提供されます。
+著作権者は本ソフトウェアと同じ、当社です。
+
+- **A（AGPL）を選ぶ場合**: DotNetClient も AGPL で利用します
+- **B（商用）を選ぶ場合**: 本ソフトウェアの商用ライセンスは、本ソフトウェアに組み込まれた DotNetClient を含みます。
+  DotNetClient を単体で利用する場合と、当社のアプリケーション以外へ組み込む場合は、DotNetClient の条件によります
+
+DotNetClient の条件は、次を参照してください。
+[DotNetClient の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient/blob/develop/LICENSING.md)
 <!-- license:end dotnetclient -->
 
 ## 貢献を受け取るとき
