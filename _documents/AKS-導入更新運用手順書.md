@@ -196,8 +196,10 @@ helm upgrade --install atomfeed deploy/aks/atomfeed \
 
 Helm の `pre-install` hook がマイグレーション Job を 1 Pod だけ起動し（`--migrate --wait-for-db=…`）、
 成功してから Deployment を作る。DB 接続に失敗するかマイグレーションに失敗した場合、導入は止まる。
-Core.Data `0.1.0-preview.12` 採用後、未適用時のログは未適用一覧と `Applied N migration(s).` に変わる。
-適用済みなら `All migrations are applied ({provider}).` のまま。Job は終了コードで判定するため変更不要。
+ログは、未適用時は未適用一覧と `[OK] Applied N migration(s).`、適用済みなら `[OK] All migrations are applied ({provider}).`
+（Core.Data 0.2.0 で `[OK]` が付いた）。Job は終了コード（0 以外で失敗）で判定するため、DB の待機期限切れの終了コードが 2 から 1 に変わっても変更不要。
+`--wait-for-db=…` は 0.2.0 でも使える（`--wait-for-db N`・`--wait-for-db:N` も可）。
+待機期限切れの原因は、Pod のログの標準エラー `[ERROR] Database not reachable after Ns (型名).` で分かる。
 状態確認の引数と終了コードは[導入・更新運用手順書](導入-更新運用手順書.md)の「マイグレーションだけを実行する・状態を確認する」を参照。
 根拠（2026-10-22 参照）: `deploy/aks/atomfeed/templates/migration-job.yaml:30-33`。
 この更新後の AKS 実機での動作は**未確認**。
