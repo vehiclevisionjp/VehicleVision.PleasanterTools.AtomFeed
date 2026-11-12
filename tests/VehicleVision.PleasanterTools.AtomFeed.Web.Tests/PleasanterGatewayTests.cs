@@ -170,9 +170,30 @@ public sealed class PleasanterGatewayTests
     [InlineData("1", false)]
     [InlineData("", false)]
     [InlineData(null, false)]
-    public void 環境変数_PLEASANTER_ALLOW_INSECURE_HTTP_は_true_のときだけ有効(string? value, bool expected)
+    public void 環境変数_VVPT_PLEASANTER_ALLOW_INSECURE_HTTP_は_true_のときだけ有効(string? value, bool expected)
     {
         Assert.Equal(expected, PleasanterOptions.ParseAllowInsecureHttp(value));
+    }
+
+    [Fact]
+    public void 旧名_PLEASANTER_ALLOW_INSECURE_HTTP_は無視される_検出も案内もしない()
+    {
+        const string legacy = "PLEASANTER_ALLOW_INSECURE_HTTP";
+        var before = Environment.GetEnvironmentVariable(legacy);
+        var newName = Environment.GetEnvironmentVariable(PleasanterOptions.AllowInsecureHttpEnvironmentVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(legacy, "true");
+            Environment.SetEnvironmentVariable(PleasanterOptions.AllowInsecureHttpEnvironmentVariable, null);
+
+            // 旧名だけが設定された環境は「新名が未設定」として扱う（ループバック以外の http は許可されない）
+            Assert.False(new PleasanterOptions { ApiKeyUserTimeZoneId = "Tokyo Standard Time" }.AllowInsecureHttp);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(legacy, before);
+            Environment.SetEnvironmentVariable(PleasanterOptions.AllowInsecureHttpEnvironmentVariable, newName);
+        }
     }
 
     [Theory]
