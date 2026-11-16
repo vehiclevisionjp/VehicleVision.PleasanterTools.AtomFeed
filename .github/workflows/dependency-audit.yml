@@ -4,8 +4,8 @@
 # 「最後に触った日から一度も検査していない」状態が延々と続く。
 #
 # **必須ステータスチェックにはしない。** 新たに公開された脆弱性で赤くなったとき、
-# その修正 PR 自体がマージできなくなる。更新の PR は Dependabot が出す
-# （.github/dependabot.yml）ので、ここは気付くための仕掛けとして扱う
+# その修正 PR 自体がマージできなくなる。npm・NuGet は自動で更新しない（.github/dependabot.yml）ので、
+# ここは気付くための仕掛けとして扱い、失敗したら人が更新する
 # （_documents/ブランチ運用方針.md「必須ステータスチェック」）。
 #
 # **actions/dependency-review-action は使わない。** GitHub の依存関係グラフを前提にした
@@ -26,7 +26,7 @@ on:
   push:
     branches:
       - "**"
-  # 毎週月曜 09:30 JST（月曜 00:30 UTC）。Dependabot の巡回（月曜 09:00 JST）の直後
+  # 毎週月曜 09:30 JST（月曜 00:30 UTC）
   schedule:
     - cron: "30 0 * * 1"
   workflow_dispatch:
