@@ -27,6 +27,6 @@
     "qrcode": "^1.5.4"
   },
   "overrides": {
-    "minimatch": "11.0.8"
+    "minimatch": "11.0.9"
   }
 }
