@@ -19,7 +19,7 @@ namespace VehicleVision.PleasanterTools.AtomFeed.Web.Services;
 /// <para>
 /// ⚠️ **ファイルのキーと環境変数の名前が違うものがある。** ファイルは Pleasanter 本体に合わせた短い名前
 /// （<c>BaseUrl</c> など）、環境変数は衝突を避けて <c>ATOMFEED_*</c>。そのままでは片方しか効かないので、
-/// <see cref="Aliases"/> で正式な名前（環境変数と同じ）へ写している。
+/// <see cref="Aliases"/> で正式な名前（環境変数と同じ）へコピーしている。
 /// </para>
 /// <para>
 /// **値が <c>null</c> や空のキーは写さない。** <c>ApiKey</c> は既定で <c>null</c>（＝ここへ書かせない）なので、
@@ -310,9 +310,9 @@ public static class ParameterFiles
             ? physical.Root
             : Directory.GetCurrentDirectory();
 
-    /// <summary>ファイルのキーを正式な名前へ写したものを作る。</summary>
+    /// <summary>ファイルのキーを正式な名前へコピーしたものを作る。</summary>
     /// <remarks>
-    /// **写す前に一度だけ読む。** 積んだ後の設定から読むと、環境変数の値まで巻き込んで写してしまう。
+    /// **コピーする前に一度だけ読む。** 積んだ後の設定から読むと、環境変数の値まで巻き込んでコピーしてしまう。
     /// **ファイルごとに別々に読む**（同じ名前のキーが別のファイルにあっても混ざらない）。
     /// </remarks>
     [SuppressMessage(

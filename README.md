@@ -105,7 +105,7 @@ npm ci && npm test && npm run build
 Pleasanter 本体のソースはビルド・テストには不要です。
 AI が事実確認するときだけ、[参照ソースの取得手順](_reference/README.md)に従って取得します。
 
-管理画面の画面の写しは
+管理画面のスクリーンショットは
 [`_documents/管理画面-画面の写し一覧.md`](_documents/管理画面-画面の写し一覧.md)（[`tools/screenshots`](tools/screenshots/README.md) で撮り直せる）。
 
 **実機（Pleasanter・Keycloak）での通し**は CI の「端から端まで通す試験」（`.github/workflows/e2e.yml`）で回す。手元でも
@@ -124,7 +124,7 @@ AI が事実確認するときだけ、[参照ソースの取得手順](_referen
 | `_reference/Implem.Pleasanter` | Pleasanter 本体（**AGPL v3 / 参照専用**）。[README](_reference/README.md) |
 | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | 開発規約（単一の参照元）。Claude Code は [`CLAUDE.md`](CLAUDE.md) から辿る |
 
-**Pleasanter 本体（AGPL v3）のコードは取り込まない。** 依存 OSS は寛容ライセンスに限定する（[`NOTICE`](NOTICE)）。
+**Pleasanter 本体（AGPL v3）のコードは組み込まない。** 依存 OSS は寛容ライセンスに限定する（[`NOTICE`](NOTICE)）。
 
 ## ライセンス
 

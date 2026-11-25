@@ -19,7 +19,7 @@
 }
 
 // アイコンの下地（同梱した Material Icons）。中身はアイコンの名前（リガチャで字形へ置き換わる）。
-// **意味は文字でも書くこと**（アイコンだけの釦は読み上げで何も伝わらない）。**aria-hidden="true" を必ず付ける**
+// **意味は文字でも書くこと**（アイコンだけのボタンは読み上げで何も伝わらない）。**aria-hidden="true" を必ず付ける**
 .material-icons {
   font-family: 'Material Icons';
   font-weight: normal;
