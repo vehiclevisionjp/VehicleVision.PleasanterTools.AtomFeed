@@ -211,7 +211,8 @@ hook が先に当て終えているので、Pod は未適用が無いことを�
 | --- | --- | --- | --- |
 | `migration.autoMigrateOnStartup` | `ATOMFEED_DB_AUTOMIGRATE` | `null`（渡さない。アプリの既定の `true`） | `false` で Pod 起動時の自動適用を止める |
 
-Core.Data 0.3.0 へ上げた更新では、空の表 2 つ（`Core_AdminPasskeys`・`Core_AdminPasskeyChallenges`）の作成と `Core_AdminSessions` への NULL 可の `Via` 列の追加（M10008・M10009）が、hook Job で当たる。
+Core.Data 0.3.0 へ上げた更新では、空の表 2 つ（`Core_AdminPasskeys`・`Core_AdminPasskeyChallenges`）の作成と、
+`Core_AdminSessions` への NULL 可の `Via` 列の追加（M10008・M10009）が、hook Job で当たる。
 実行する DB ユーザーに表の作成と列の追加の権限が要る。
 
 アプリ用の DB アカウントからスキーマ変更の権限を外す場合は `migration.autoMigrateOnStartup: false` にする。
