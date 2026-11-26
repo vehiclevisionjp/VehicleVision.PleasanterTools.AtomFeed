@@ -42,7 +42,7 @@ internal static class XmlText
     public static string Rfc822(DateTimeOffset value) =>
         value.UtcDateTime.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'", CultureInfo.InvariantCulture);
 
-    /// <summary>XML の書き出しの設定。宣言は UTF-8。</summary>
+    /// <summary>XML の出力の設定。宣言は UTF-8。</summary>
     public static XmlWriterSettings Settings() => new()
     {
         Indent = true,

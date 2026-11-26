@@ -23,7 +23,7 @@ check_references() {
     return "$result"
 }
 
-# C# の文書コメント中の _reference は参照根拠であり、プロジェクトへの取り込みではない。
+# C# の文書コメント中の _reference は参照根拠であり、プロジェクトへの組み込みではない。
 if [[ "${#source_dirs[@]}" -gt 0 ]] &&
     { check_references -REin 'Implem\.|_reference' "${source_dirs[@]}" --include='*.csproj' ||
         check_references -REin 'Implem\.|"[^"]*_reference' "${source_dirs[@]}" --include='*.cs'; }; then
