@@ -97,6 +97,7 @@ public sealed class HealthAndMigrateTests : IDisposable
             [
                 "Core_AdminUsers", "Core_AdminSetup", "Core_AdminSessions", "Core_AdminRecoveryCodes", "Core_AuditLogs",
                 "Core_AdminInvitations", "Core_MailOutbox", "Core_AppSettings", "Core_RateLimits",
+                "Core_AdminPasskeys", "Core_AdminPasskeyChallenges",
             ];
             Assert.All(legacy, name => Assert.DoesNotContain(name, tables));
             Assert.All(shared, name => Assert.Contains(name, tables));
